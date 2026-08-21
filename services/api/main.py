@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from packages.gcp.pubsub import bus
 from packages.gcp.state import state
-from packages.schemas.models import Claim, Event, Replication, ReplicationCreate, WorkMessage
+from packages.schemas.models import Claim, Event, Replication, ReplicationCreate, Verdict, WorkMessage
 from services.pipeline import register_local_pipeline
 
 app = FastAPI(title="Replicator API", version="0.1.0")
@@ -58,6 +58,13 @@ async def get_claims(replication_id: str) -> list[Claim]:
     if not await state.get_replication(replication_id):
         raise HTTPException(status_code=404, detail="Replication not found")
     return await state.list_claims(replication_id)
+
+
+@app.get("/replications/{replication_id}/verdicts", response_model=list[Verdict])
+async def get_verdicts(replication_id: str) -> list[Verdict]:
+    if not await state.get_replication(replication_id):
+        raise HTTPException(status_code=404, detail="Replication not found")
+    return await state.list_verdicts(replication_id)
 
 
 @app.get("/replications/{replication_id}/events")

@@ -193,6 +193,16 @@ class RepairDecision(BaseModel):
     reusable_lesson: str
 
 
+class ReportManifest(BaseModel):
+    replication_id: str
+    report_sha256: str
+    generated_at: datetime = Field(default_factory=utcnow)
+    verdict_ids: list[str]
+    evidence_uris: list[str]
+    signature: str | None = None
+    signature_algorithm: str | None = None
+
+
 class WorkMessage(BaseModel):
     event_id: str = Field(default_factory=lambda: uuid4().hex)
     event_type: str

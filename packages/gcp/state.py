@@ -13,6 +13,7 @@ from packages.schemas.models import (
     Replication,
     ReplicationStatus,
     Spend,
+    Verdict,
     utcnow,
 )
 
@@ -32,6 +33,7 @@ class InMemoryState:
         self.plans: dict[str, ExperimentPlan] = {}
         self.attempts: dict[str, Attempt] = {}
         self.memories: dict[str, Memory] = {}
+        self.verdicts: dict[str, Verdict] = {}
         self._condition = asyncio.Condition()
         self._lock = asyncio.Lock()
 
@@ -114,6 +116,18 @@ class InMemoryState:
     async def get_memory(self, key: str) -> Memory | None:
         memory = self.memories.get(key)
         return memory.model_copy(deep=True) if memory else None
+
+    async def put_verdict(self, verdict: Verdict) -> None:
+        async with self._lock:
+            self.verdicts[verdict.id] = verdict.model_copy(deep=True)
+
+    async def list_verdicts(self, replication_id: str) -> list[Verdict]:
+        claim_ids = set(self.claims[replication_id])
+        return [
+            verdict.model_copy(deep=True)
+            for verdict in self.verdicts.values()
+            if verdict.claim_id in claim_ids
+        ]
 
     async def claim_event(self, event_id: str) -> bool:
         async with self._lock:
