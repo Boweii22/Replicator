@@ -13,6 +13,7 @@ from packages.gcp.state import state
 from packages.schemas.models import Claim, Event, Replication, ReplicationCreate, Verdict, WorkMessage
 from services.pipeline import register_local_pipeline
 from services.reporter.report import render_report
+from services.demo import run_calibration_mission
 
 app = FastAPI(title="Replicator API", version="0.1.0")
 app.add_middleware(
@@ -44,6 +45,11 @@ async def create_replication(payload: ReplicationCreate) -> Replication:
         event_type="replication.requested", replication_id=replication.id
     ))
     return replication
+
+
+@app.post("/demo/calibration", response_model=Replication, status_code=201)
+async def calibration_demo() -> Replication:
+    return await run_calibration_mission()
 
 
 @app.get("/replications/{replication_id}", response_model=Replication)

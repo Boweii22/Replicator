@@ -55,6 +55,26 @@ function connect(id) {
   source.onerror = () => $("mission-status").textContent = "RECONNECTING";
 }
 
+$("demo-button").addEventListener("click", async () => {
+  const button = $("demo-button");
+  button.disabled = true; button.textContent = "RUNNING REAL CALIBRATION…";
+  try {
+    const response = await fetch("/demo/calibration", {method: "POST"});
+    if (!response.ok) throw new Error("Calibration failed");
+    const run = await response.json();
+    $("mission").classList.remove("hidden");
+    $("mission-id").textContent = `CALIBRATION / ${run.id.toUpperCase()}`;
+    $("mission-status").textContent = run.status.toUpperCase();
+    $("open-report").href = `/replications/${run.id}/report`;
+    document.querySelectorAll(".stage").forEach(stage => stage.classList.add("active"));
+    $("events").innerHTML = "";
+    connect(run.id);
+    await refreshEvidence(run.id);
+    $("mission").scrollIntoView({behavior: "smooth"});
+  } catch (error) { alert(error.message); }
+  finally { button.disabled = false; button.textContent = "RUN EVIDENCE-BACKED CALIBRATION"; }
+});
+
 async function refreshEvidence(id) {
   const [claimsResponse, verdictsResponse] = await Promise.all([fetch(`/replications/${id}/claims`), fetch(`/replications/${id}/verdicts`)]);
   if (!claimsResponse.ok || !verdictsResponse.ok) return;

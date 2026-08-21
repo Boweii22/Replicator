@@ -129,6 +129,19 @@ class InMemoryState:
             if verdict.claim_id in claim_ids
         ]
 
+    async def finish_report(
+        self, replication_id: str, *, report_uri: str, summary: str
+    ) -> Replication:
+        async with self._lock:
+            item = self.replications[replication_id]
+            if item.status != ReplicationStatus.VERIFYING:
+                raise ConflictError(f"cannot report from {item.status}")
+            item.status = ReplicationStatus.REPORTED
+            item.report_gcs_uri = report_uri
+            item.summary_verdict = summary
+            item.updated_at = utcnow()
+            return item.model_copy(deep=True)
+
     async def claim_event(self, event_id: str) -> bool:
         async with self._lock:
             if event_id in self.processed_events:
