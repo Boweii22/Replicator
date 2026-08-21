@@ -175,6 +175,24 @@ class Memory(BaseModel):
     origin_replication_id: str
 
 
+class ExecutionResult(BaseModel):
+    exit_code: int
+    job_minutes: float = Field(ge=0)
+    cost_usd: float = Field(ge=0)
+    stdout_uri: str
+    metrics_uri: str | None = None
+    figure_uris: list[str] = Field(default_factory=list)
+    stderr_tail: str = ""
+
+
+class RepairDecision(BaseModel):
+    error_signature: str
+    diagnosis: str
+    patch_summary: str
+    patch: str
+    reusable_lesson: str
+
+
 class WorkMessage(BaseModel):
     event_id: str = Field(default_factory=lambda: uuid4().hex)
     event_type: str

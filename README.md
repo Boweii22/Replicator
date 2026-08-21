@@ -74,7 +74,9 @@ See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 | Secure arXiv PDF ingestion | Implemented and tested |
 | PDF text and embedded-image extraction | Implemented; needs a representative-paper fixture |
 | Gemini structured quantitative claims | Implemented; requires Vertex credentials for live test |
-| Planner, coder, executor healing | Next |
+| Budget-aware experiment planning and runner contract | Implemented and tested |
+| Capped executor fail → diagnose → repair → retry loop | Implemented with runner interfaces and tests |
+| Cloud Run Jobs adapter and Gemini code repairer | Next |
 | Multimodal verifier and signed reporter | Next |
 | Firestore production adapter and deployed proof | Next |
 

@@ -4,7 +4,17 @@ import asyncio
 from collections import defaultdict
 from typing import AsyncIterator
 
-from packages.schemas.models import Claim, Event, Replication, ReplicationStatus, utcnow
+from packages.schemas.models import (
+    Attempt,
+    Claim,
+    Event,
+    ExperimentPlan,
+    Memory,
+    Replication,
+    ReplicationStatus,
+    Spend,
+    utcnow,
+)
 
 
 class ConflictError(RuntimeError):
@@ -19,6 +29,9 @@ class InMemoryState:
         self.processed_events: set[str] = set()
         self.events: dict[str, list[Event]] = defaultdict(list)
         self.claims: dict[str, dict[str, Claim]] = defaultdict(dict)
+        self.plans: dict[str, ExperimentPlan] = {}
+        self.attempts: dict[str, Attempt] = {}
+        self.memories: dict[str, Memory] = {}
         self._condition = asyncio.Condition()
         self._lock = asyncio.Lock()
 
@@ -61,6 +74,46 @@ class InMemoryState:
 
     async def list_claims(self, replication_id: str) -> list[Claim]:
         return [claim.model_copy(deep=True) for claim in self.claims[replication_id].values()]
+
+    async def put_plan(self, plan: ExperimentPlan) -> None:
+        async with self._lock:
+            self.plans[plan.id] = plan.model_copy(deep=True)
+
+    async def get_plan(self, plan_id: str) -> ExperimentPlan | None:
+        plan = self.plans.get(plan_id)
+        return plan.model_copy(deep=True) if plan else None
+
+    async def put_attempt(self, attempt: Attempt) -> None:
+        async with self._lock:
+            self.attempts[attempt.id] = attempt.model_copy(deep=True)
+
+    async def list_attempts(self, plan_id: str) -> list[Attempt]:
+        return [
+            attempt.model_copy(deep=True)
+            for attempt in self.attempts.values()
+            if attempt.plan_id == plan_id
+        ]
+
+    async def add_spend(self, replication_id: str, *, usd: float, job_minutes: float) -> Spend:
+        async with self._lock:
+            item = self.replications[replication_id]
+            item.spent.usd += usd
+            item.spent.job_minutes += job_minutes
+            item.updated_at = utcnow()
+            return item.spent.model_copy(deep=True)
+
+    async def put_memory(self, memory: Memory) -> None:
+        async with self._lock:
+            existing = self.memories.get(memory.key)
+            if existing:
+                existing.times_used += 1
+                existing.last_used_at = utcnow()
+            else:
+                self.memories[memory.key] = memory.model_copy(deep=True)
+
+    async def get_memory(self, key: str) -> Memory | None:
+        memory = self.memories.get(key)
+        return memory.model_copy(deep=True) if memory else None
 
     async def claim_event(self, event_id: str) -> bool:
         async with self._lock:
