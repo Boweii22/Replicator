@@ -120,6 +120,19 @@ class ReaderResult(BaseModel):
     domain_tags: list[str] = Field(default_factory=list)
     claims: list[ClaimCandidate]
 
+    @classmethod
+    def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        """Inline the nested claim schema for Vertex's OpenAPI subset."""
+        schema = super().model_json_schema(*args, **kwargs)
+        definitions = schema.pop("$defs", {})
+        claim_schema = definitions.get("ClaimCandidate")
+        if claim_schema:
+            tolerance = claim_schema["properties"]["tolerance_pct"]
+            tolerance.pop("exclusiveMinimum", None)
+            tolerance["minimum"] = 0
+            schema["properties"]["claims"]["items"] = claim_schema
+        return schema
+
 
 class ExperimentPlan(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)

@@ -15,15 +15,26 @@ class ArtifactStore:
     def put_bytes(self, key: str, data: bytes, content_type: str) -> str:
         safe_key = self._safe_key(key)
         if self.bucket:
+            from google.api_core.exceptions import PreconditionFailed
             from google.cloud import storage
 
             blob = storage.Client().bucket(self.bucket).blob(safe_key)
-            blob.upload_from_string(data, content_type=content_type, if_generation_match=0)
+            try:
+                blob.upload_from_string(data, content_type=content_type, if_generation_match=0)
+            except PreconditionFailed:
+                if blob.download_as_bytes() != data:
+                    raise FileExistsError(
+                        f"Artifact already exists with different bytes: {safe_key}"
+                    ) from None
             return f"gs://{self.bucket}/{safe_key}"
         target = self.local_root / Path(safe_key)
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("xb") as handle:
-            handle.write(data)
+        try:
+            with target.open("xb") as handle:
+                handle.write(data)
+        except FileExistsError:
+            if target.read_bytes() != data:
+                raise
         return target.resolve().as_uri()
 
     def get_bytes(self, uri: str) -> bytes:

@@ -51,6 +51,7 @@ def test_local_artifacts_are_immutable_and_path_safe() -> None:
     uri = store.put_bytes("run-1/paper/source.pdf", b"%PDF-test", "application/pdf")
     assert uri.startswith("file:")
     assert (test_root / "run-1" / "paper" / "source.pdf").read_bytes() == b"%PDF-test"
+    assert store.put_bytes("run-1/paper/source.pdf", b"%PDF-test", "application/pdf") == uri
     with pytest.raises(FileExistsError):
         store.put_bytes("run-1/paper/source.pdf", b"changed", "application/pdf")
     with pytest.raises(ValueError):
