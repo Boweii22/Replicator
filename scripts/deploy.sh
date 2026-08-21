@@ -14,7 +14,8 @@ terraform -chdir=infra apply -auto-approve \
   -target=google_artifact_registry_repository.images \
   -var="project_id=${GOOGLE_CLOUD_PROJECT}" -var="region=${REGION}" -var="image=${IMAGE}"
 gcloud builds submit --region="${REGION}" --config=cloudbuild.yaml --substitutions="_IMAGE=${IMAGE}" .
-terraform -chdir=infra apply -var="project_id=${GOOGLE_CLOUD_PROJECT}" -var="region=${REGION}" -var="image=${IMAGE}"
+terraform -chdir=infra apply -auto-approve \
+  -var="project_id=${GOOGLE_CLOUD_PROJECT}" -var="region=${REGION}" -var="image=${IMAGE}"
 
 echo "Deployment complete. API URL:"
 terraform -chdir=infra output -raw api_url

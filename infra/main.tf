@@ -16,6 +16,10 @@ locals {
   all_topics = toset(concat(values(local.worker_topics), ["job.finished", "dead-letter"]))
 }
 
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
 resource "google_project_service" "apis" {
   for_each           = local.services
   service            = each.value
@@ -223,6 +227,31 @@ resource "google_pubsub_subscription" "job_finished_executor" {
     max_delivery_attempts = 5
   }
   depends_on = [google_cloud_run_v2_service_iam_member.push_invoker]
+}
+
+resource "google_pubsub_topic_iam_member" "dead_letter_publish" {
+  topic  = google_pubsub_topic.topics["dead-letter"].name
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_subscription_iam_member" "dead_letter_forward" {
+  for_each     = local.worker_topics
+  subscription = google_pubsub_subscription.worker[each.key].name
+  role         = "roles/pubsub.subscriber"
+  member       = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_subscription_iam_member" "job_finished_dead_letter_forward" {
+  subscription = google_pubsub_subscription.job_finished_executor.name
+  role         = "roles/pubsub.subscriber"
+  member       = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "pubsub_token_creator" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  member  = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
 resource "google_cloud_run_v2_job" "janitor" {
