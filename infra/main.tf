@@ -89,6 +89,7 @@ resource "google_cloud_run_v2_service" "worker" {
   ingress  = var.allowed_ingress
   template {
     service_account = google_service_account.runtime.email
+    timeout         = "600s"
     scaling {
       min_instance_count = 0
       max_instance_count = 3

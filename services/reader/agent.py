@@ -7,7 +7,7 @@ from packages.schemas.models import ReaderResult
 MODEL = os.getenv("MODEL_ID", "gemini-3.5-flash")
 
 INSTRUCTION = """You are Replicator's evidence extraction agent.
-Extract every explicit quantitative scientific claim, table result, and figure conclusion.
+Extract at most eight highest-priority quantitative claims, table results, and figure conclusions.
 Return only claims supported by the supplied paper. Preserve units and reported values exactly.
 Rank headline claims priority 1. Mark work needing proprietary data or more than one GPU-hour
 infeasible.

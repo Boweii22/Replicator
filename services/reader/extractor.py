@@ -30,7 +30,7 @@ class VertexClaimsExtractor:
             + delimit_untrusted(paper.full_text)
         )
         parts = [types.Part.from_text(text=prompt)]
-        for index, path in enumerate(paper.figure_paths[:12]):
+        for index, path in enumerate(paper.figure_paths[:6]):
             if path.startswith(("gs://", "file://")):
                 continue
             try:
