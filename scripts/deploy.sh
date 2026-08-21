@@ -24,6 +24,11 @@ gcloud builds submit --region="${REGION}" --config=cloudbuild.yaml \
   --service-account="projects/${GOOGLE_CLOUD_PROJECT}/serviceAccounts/replicator-builder@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" \
   --substitutions="_IMAGE=${IMAGE}" .
 terraform -chdir=infra apply -auto-approve \
+  -target=google_cloud_run_v2_service.api \
+  -target=google_cloud_run_v2_service.worker \
+  -target=google_cloud_run_v2_job.janitor \
+  -var="project_id=${GOOGLE_CLOUD_PROJECT}" -var="region=${REGION}" -var="image=${IMAGE}"
+terraform -chdir=infra apply -auto-approve \
   -var="project_id=${GOOGLE_CLOUD_PROJECT}" -var="region=${REGION}" -var="image=${IMAGE}"
 
 echo "Deployment complete. API URL:"

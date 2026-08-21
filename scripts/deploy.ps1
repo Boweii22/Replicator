@@ -45,6 +45,11 @@ Invoke-Checked $Gcloud @("builds", "submit", "--region=$Region", "--config=cloud
   "--service-account=projects/$ProjectId/serviceAccounts/replicator-builder@$ProjectId.iam.gserviceaccount.com",
   "--substitutions=_IMAGE=$Image", ".")
 Invoke-Checked $Terraform @("-chdir=infra", "apply", "-auto-approve",
+  "-target=google_cloud_run_v2_service.api",
+  "-target=google_cloud_run_v2_service.worker",
+  "-target=google_cloud_run_v2_job.janitor",
+  "-var=project_id=$ProjectId", "-var=region=$Region", "-var=image=$Image")
+Invoke-Checked $Terraform @("-chdir=infra", "apply", "-auto-approve",
   "-var=project_id=$ProjectId", "-var=region=$Region", "-var=image=$Image")
 
 $ApiUrl = & $Terraform @("-chdir=infra", "output", "-raw", "api_url")
