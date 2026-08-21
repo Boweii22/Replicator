@@ -35,7 +35,9 @@ Never propose proprietary data, silent downscaling, fabricated metrics, or work 
             model=self.model,
             contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=0.1, response_mime_type="application/json", response_schema=PlanProposal
+                temperature=0.1,
+                response_mime_type="application/json",
+                response_schema=PlanProposal.model_json_schema(),
             ),
         )
         if response.parsed is None:

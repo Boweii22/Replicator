@@ -4,6 +4,12 @@ from packages.schemas.models import Budget, Claim, PlanProposal, Replication
 from services.planner.generator import proposal_to_plan
 
 
+def test_plan_proposal_schema_is_vertex_compatible() -> None:
+    schema = PlanProposal.model_json_schema()
+    assert "exclusiveMinimum" not in schema["properties"]["estimated_minutes"]
+    assert schema["properties"]["estimated_minutes"]["minimum"] == 0
+
+
 def test_generated_plan_cannot_cross_code_enforced_budget() -> None:
     replication = Replication(
         source_url="https://arxiv.org/abs/1706.03762",

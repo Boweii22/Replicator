@@ -260,6 +260,14 @@ class PlanProposal(BaseModel):
     steps: list[str] = Field(min_length=1)
     risks: list[str] = Field(default_factory=list)
 
+    @classmethod
+    def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        schema = super().model_json_schema(*args, **kwargs)
+        minutes = schema["properties"]["estimated_minutes"]
+        minutes.pop("exclusiveMinimum", None)
+        minutes["minimum"] = 0
+        return schema
+
 
 class WorkMessage(BaseModel):
     event_id: str = Field(default_factory=lambda: uuid4().hex)
