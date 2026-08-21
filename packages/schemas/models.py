@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 
 def utcnow() -> datetime:
@@ -112,6 +112,23 @@ class ClaimCandidate(BaseModel):
     priority: int = Field(default=2, ge=1, le=3)
     feasible: bool = False
     feasibility_reason: str = "Model did not establish feasibility"
+
+    @field_validator("tolerance_pct", "priority", mode="before")
+    @classmethod
+    def numeric_defaults_for_null(cls, value: Any, info: Any) -> Any:
+        if value is not None:
+            return value
+        return 5 if info.field_name == "tolerance_pct" else 2
+
+    @field_validator("feasible", mode="before")
+    @classmethod
+    def feasibility_defaults_to_false(cls, value: Any) -> Any:
+        return False if value is None else value
+
+    @field_validator("feasibility_reason", mode="before")
+    @classmethod
+    def reason_defaults_for_null(cls, value: Any) -> Any:
+        return "Model did not establish feasibility" if value is None else value
 
 
 class ReaderResult(BaseModel):

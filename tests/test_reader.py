@@ -70,3 +70,17 @@ def test_omitted_feasibility_fails_closed() -> None:
     claim = ClaimCandidate(text="Accuracy improved", claim_type="metric")
     assert claim.feasible is False
     assert claim.feasibility_reason == "Model did not establish feasibility"
+
+
+def test_null_agent_defaults_are_normalized_safely() -> None:
+    claim = ClaimCandidate(
+        text="Accuracy improved",
+        claim_type="metric",
+        tolerance_pct=None,
+        priority=None,
+        feasible=None,
+        feasibility_reason=None,
+    )
+    assert (claim.tolerance_pct, claim.priority) == (5, 2)
+    assert claim.feasible is False
+    assert claim.feasibility_reason == "Model did not establish feasibility"

@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Protocol
 
+from pydantic import ValidationError
+
 from packages.schemas.models import PaperExtraction, ReaderResult
 from services.reader.agent import INSTRUCTION, build_agent
 from services.reader.security import delimit_untrusted
@@ -53,4 +55,8 @@ class VertexClaimsExtractor:
                 final_text = "".join(part.text or "" for part in event.content.parts or [])
         if not final_text:
             raise ValueError("ADK reader returned no structured claim extraction")
-        return ReaderResult.model_validate(json.loads(final_text))
+        try:
+            return ReaderResult.model_validate(json.loads(final_text))
+        except ValidationError as exc:
+            errors = json.dumps(exc.errors(include_url=False, include_input=False), separators=(",", ":"))
+            raise ValueError(f"Reader output validation failed: {errors}") from None
