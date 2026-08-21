@@ -26,7 +26,7 @@ def build_agent():
         name="replicator_reader",
         model=Gemini(model=MODEL, retry_options=types.HttpRetryOptions(attempts=3)),
         instruction=INSTRUCTION,
-        output_schema=ReaderResult,
+        output_schema=ReaderResult.model_json_schema(),
         output_key="claim_extraction",
     )
 

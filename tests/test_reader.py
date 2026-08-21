@@ -62,7 +62,8 @@ def test_reader_is_a_real_adk_structured_output_agent() -> None:
     pytest.importorskip("google.adk")
     agent = build_agent()
     assert agent.name == "replicator_reader"
-    assert agent.output_schema is ReaderResult
+    assert agent.output_schema == ReaderResult.model_json_schema()
+    assert agent.output_schema["properties"]["claims"]["items"]["type"] == "object"
 
 
 def test_omitted_feasibility_fails_closed() -> None:
