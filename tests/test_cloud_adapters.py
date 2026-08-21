@@ -70,10 +70,10 @@ class RecordingSession:
 
     def post(self, url: str, *, json: dict | None = None, timeout: int = 60) -> FakeResponse:
         self.posts.append((url, json or {}))
-        return FakeResponse({"name": "operations/verified"})
+        return FakeResponse({"metadata": {"build": {"id": "build-1"}}})
 
     def get(self, url: str, *, timeout: int = 60) -> FakeResponse:
-        return FakeResponse({"done": True, "response": {"name": "execution-1"}})
+        return FakeResponse({"status": "SUCCESS", "id": "build-1"})
 
 
 def test_execution_api_uses_regional_build_endpoint() -> None:
@@ -89,5 +89,6 @@ def test_execution_api_uses_regional_build_endpoint() -> None:
             service_account="builder@project.iam.gserviceaccount.com",
         )
     )
-    assert operation == "operations/verified"
+    assert operation == "projects/project/locations/europe-west1/builds/build-1"
     assert "/locations/europe-west1/builds" in session.posts[0][0]
+    assert api.wait_build(operation, timeout_seconds=1)["status"] == "SUCCESS"

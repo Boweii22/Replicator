@@ -39,10 +39,10 @@ class GoogleExecutionApi:
         response = self.session.post(url, json=build_spec(request), timeout=60)
         response.raise_for_status()
         operation = response.json()
-        name = operation.get("name")
-        if not name:
-            raise RuntimeError("Cloud Build returned no operation name")
-        return name
+        build_id = operation.get("metadata", {}).get("build", {}).get("id")
+        if not build_id:
+            raise RuntimeError("Cloud Build returned no build ID")
+        return f"projects/{request.project}/locations/{request.region}/builds/{build_id}"
 
     def create_job(self, request: JobRequest) -> str:
         url = (
@@ -76,8 +76,26 @@ class GoogleExecutionApi:
             time.sleep(2)
         raise TimeoutError(f"Google operation exceeded {timeout_seconds}s")
 
-    def wait_build(self, operation_name: str, *, timeout_seconds: int = 1200) -> dict:
-        return self._poll(f"https://cloudbuild.googleapis.com/v1/{operation_name}", timeout_seconds)
+    def wait_build(self, build_name: str, *, timeout_seconds: int = 1200) -> dict:
+        deadline = time.monotonic() + timeout_seconds
+        url = f"https://cloudbuild.googleapis.com/v1/{build_name}"
+        while time.monotonic() < deadline:
+            response = self.session.get(url, timeout=60)
+            response.raise_for_status()
+            build = response.json()
+            status = build.get("status")
+            if status == "SUCCESS":
+                return build
+            if status in {"FAILURE", "INTERNAL_ERROR", "TIMEOUT", "CANCELLED", "EXPIRED"}:
+                detail = (
+                    build.get("statusDetail")
+                    or build.get("failureInfo", {}).get("detail")
+                    or build.get("logUrl")
+                    or "no detail"
+                )
+                raise RuntimeError(f"Cloud Build {status}: {detail}")
+            time.sleep(2)
+        raise TimeoutError(f"Cloud Build exceeded {timeout_seconds}s")
 
     def _poll(self, url: str, timeout_seconds: int) -> dict:
         deadline = time.monotonic() + timeout_seconds
