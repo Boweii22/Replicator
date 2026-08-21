@@ -90,7 +90,10 @@ resource "google_cloud_run_v2_service" "worker" {
   ingress  = var.allowed_ingress
   template {
     service_account = google_service_account.runtime.email
-    timeout         = "600s"
+    # Executor synchronously follows a bounded build and experiment job. Other
+    # workers remain short-lived; executor needs enough request time to record
+    # the job outcome and publish verification without being killed mid-flight.
+    timeout = each.key == "executor" ? "1800s" : "600s"
     scaling {
       min_instance_count = 0
       max_instance_count = 3
