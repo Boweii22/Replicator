@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import os
 import re
 from typing import Protocol
@@ -43,23 +44,47 @@ data loading fails. On failure, raise an error and emit no misleading metrics.
 For UCR/UEA time-series data, use `sktime.datasets.load_UCR_UEA_dataset`; never download directly
 from timeseriesclassification.com, whose anti-bot responses are not dataset ZIP files.
 """
-        response = await self.client.aio.models.generate_content(
-            model=self.model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                response_mime_type="application/json",
-                response_schema=GeneratedExperiment,
-            ),
-        )
-        if response.parsed is None:
-            raise ValueError("Gemini returned no structured experiment source")
-        generated = GeneratedExperiment.model_validate(response.parsed)
-        generated.requirements_txt = normalize_python311_requirements(generated.requirements_txt)
-        generated.requirements_txt = ensure_import_requirements(
-            generated.run_py, generated.requirements_txt
-        )
-        return generated
+        validation_error = ""
+        for _ in range(3):
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=prompt + validation_error,
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                    response_mime_type="application/json",
+                    response_schema=GeneratedExperiment,
+                ),
+            )
+            if response.parsed is None:
+                validation_error = "\nPrevious response was not structured JSON. Return valid output.\n"
+                continue
+            generated = GeneratedExperiment.model_validate(response.parsed)
+            generated.requirements_txt = normalize_python311_requirements(
+                generated.requirements_txt
+            )
+            generated.requirements_txt = ensure_import_requirements(
+                generated.run_py, generated.requirements_txt
+            )
+            try:
+                validate_generated_source(generated.run_py)
+            except ValueError as exc:
+                validation_error = (
+                    f"\nThe previous candidate was rejected before build: {exc}. "
+                    "Return a corrected, complete replacement.\n"
+                )
+                continue
+            return generated
+        raise ValueError("Gemini failed the generated-source gate after 3 candidates")
+
+
+def validate_generated_source(run_py: str) -> None:
+    """Reject code that cannot run or repeats a known unreliable dataset path."""
+    try:
+        ast.parse(run_py)
+    except SyntaxError as exc:
+        raise ValueError(f"run.py has invalid syntax at line {exc.lineno}: {exc.msg}") from exc
+    if "timeseriesclassification.com" in run_py.lower():
+        raise ValueError("run.py uses prohibited direct timeseriesclassification.com downloads")
 
 
 def normalize_python311_requirements(requirements: str) -> str:

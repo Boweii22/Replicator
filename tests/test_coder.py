@@ -4,6 +4,7 @@ from services.coder.generator import (
     ensure_import_requirements,
     normalize_python311_requirements,
     package_generated_experiment,
+    validate_generated_source,
 )
 
 
@@ -32,3 +33,13 @@ def test_python311_requirement_gate_repairs_incompatible_numba() -> None:
 def test_import_gate_adds_missing_matplotlib_pin() -> None:
     repaired = ensure_import_requirements("import matplotlib.pyplot as plt", "numpy==1.26.4")
     assert repaired == "numpy==1.26.4\nmatplotlib==3.8.4"
+
+
+def test_generated_source_gate_rejects_syntax_errors_and_unreliable_host() -> None:
+    validate_generated_source("print('valid')")
+    for source in ("if True print('broken')", "download('timeseriesclassification.com/x.zip')"):
+        try:
+            validate_generated_source(source)
+            raise AssertionError("unsafe source should be rejected")
+        except ValueError:
+            pass
