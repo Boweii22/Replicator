@@ -35,8 +35,14 @@ if ($LASTEXITCODE -ne 0) {
 Invoke-Checked $Terraform @("-chdir=infra", "apply", "-auto-approve",
   "-target=google_project_service.apis",
   "-target=google_artifact_registry_repository.images",
+  "-target=google_service_account.builder",
+  "-target=google_project_iam_member.builder_build",
+  "-target=google_project_iam_member.builder_logs",
+  "-target=google_project_iam_member.builder_source_read",
+  "-target=google_artifact_registry_repository_iam_member.builder_push",
   "-var=project_id=$ProjectId", "-var=region=$Region", "-var=image=$Image")
 Invoke-Checked $Gcloud @("builds", "submit", "--region=$Region", "--config=cloudbuild.yaml",
+  "--service-account=projects/$ProjectId/serviceAccounts/replicator-builder@$ProjectId.iam.gserviceaccount.com",
   "--substitutions=_IMAGE=$Image", ".")
 Invoke-Checked $Terraform @("-chdir=infra", "apply", "-auto-approve",
   "-var=project_id=$ProjectId", "-var=region=$Region", "-var=image=$Image")

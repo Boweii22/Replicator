@@ -408,6 +408,12 @@ resource "google_project_iam_member" "builder_build" {
   member  = "serviceAccount:${google_service_account.builder.email}"
 }
 
+resource "google_project_iam_member" "builder_source_read" {
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.builder.email}"
+}
+
 resource "google_storage_bucket_iam_member" "builder_read_sources" {
   bucket = google_storage_bucket.artifacts.name
   role   = "roles/storage.objectViewer"

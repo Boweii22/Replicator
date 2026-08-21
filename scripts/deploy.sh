@@ -14,8 +14,15 @@ terraform -chdir=infra workspace select "${WORKSPACE}" || terraform -chdir=infra
 terraform -chdir=infra apply -auto-approve \
   -target=google_project_service.apis \
   -target=google_artifact_registry_repository.images \
+  -target=google_service_account.builder \
+  -target=google_project_iam_member.builder_build \
+  -target=google_project_iam_member.builder_logs \
+  -target=google_project_iam_member.builder_source_read \
+  -target=google_artifact_registry_repository_iam_member.builder_push \
   -var="project_id=${GOOGLE_CLOUD_PROJECT}" -var="region=${REGION}" -var="image=${IMAGE}"
-gcloud builds submit --region="${REGION}" --config=cloudbuild.yaml --substitutions="_IMAGE=${IMAGE}" .
+gcloud builds submit --region="${REGION}" --config=cloudbuild.yaml \
+  --service-account="projects/${GOOGLE_CLOUD_PROJECT}/serviceAccounts/replicator-builder@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" \
+  --substitutions="_IMAGE=${IMAGE}" .
 terraform -chdir=infra apply -auto-approve \
   -var="project_id=${GOOGLE_CLOUD_PROJECT}" -var="region=${REGION}" -var="image=${IMAGE}"
 
