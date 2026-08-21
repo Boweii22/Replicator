@@ -110,8 +110,8 @@ class ClaimCandidate(BaseModel):
     figure_image_index: int | None = Field(default=None, ge=0)
     table_ref: str | None = None
     priority: int = Field(default=2, ge=1, le=3)
-    feasible: bool
-    feasibility_reason: str
+    feasible: bool = False
+    feasibility_reason: str = "Model did not establish feasibility"
 
 
 class ReaderResult(BaseModel):

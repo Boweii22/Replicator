@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from packages.gcp.artifacts import ArtifactStore
-from packages.schemas.models import ReaderResult
+from packages.schemas.models import ClaimCandidate, ReaderResult
 from services.reader.agent import build_agent
 from services.reader.pdf import canonical_pdf_url
 from services.reader.security import delimit_untrusted, scan_untrusted_text
@@ -63,3 +63,9 @@ def test_reader_is_a_real_adk_structured_output_agent() -> None:
     agent = build_agent()
     assert agent.name == "replicator_reader"
     assert agent.output_schema is ReaderResult
+
+
+def test_omitted_feasibility_fails_closed() -> None:
+    claim = ClaimCandidate(text="Accuracy improved", claim_type="metric")
+    assert claim.feasible is False
+    assert claim.feasibility_reason == "Model did not establish feasibility"
