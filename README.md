@@ -76,7 +76,8 @@ See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 | Gemini structured quantitative claims | Implemented; requires Vertex credentials for live test |
 | Budget-aware experiment planning and runner contract | Implemented and tested |
 | Capped executor fail → diagnose → repair → retry loop | Implemented with runner interfaces and tests |
-| Cloud Run Jobs adapter and Gemini code repairer | Next |
+| Deterministic experiment bundles and Cloud Build request | Implemented and tested |
+| Restricted Cloud Run Jobs adapter and Gemini code repairer | Implemented; live GCP test pending |
 | Multimodal verifier and signed reporter | Next |
 | Firestore production adapter and deployed proof | Next |
 
