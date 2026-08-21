@@ -61,13 +61,17 @@ from google.cloud import storage
 
 out = pathlib.Path("/out")
 out.mkdir(parents=True, exist_ok=True)
-result = subprocess.run([sys.executable, "run.py", "--out", str(out)], check=False)
-if result.returncode == 0:
-    target = os.environ["OUTPUT_GCS_URI"].removeprefix("gs://")
-    bucket_name, prefix = target.split("/", 1)
-    bucket = storage.Client().bucket(bucket_name)
-    for path in out.rglob("*"):
-        if path.is_file():
-            bucket.blob(f"{prefix}/{path.relative_to(out).as_posix()}").upload_from_filename(str(path), if_generation_match=0)
+result = subprocess.run([sys.executable, "run.py", "--out", str(out)], check=False,
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+(out / "stdout.log").write_text(result.stdout, encoding="utf-8")
+(out / "stderr.log").write_text(result.stderr, encoding="utf-8")
+sys.stdout.write(result.stdout)
+sys.stderr.write(result.stderr)
+target = os.environ["OUTPUT_GCS_URI"].removeprefix("gs://")
+bucket_name, prefix = target.split("/", 1)
+bucket = storage.Client().bucket(bucket_name)
+for path in out.rglob("*"):
+    if path.is_file():
+        bucket.blob(f"{prefix}/{path.relative_to(out).as_posix()}").upload_from_filename(str(path), if_generation_match=0)
 sys.exit(result.returncode)
 '''

@@ -1,4 +1,4 @@
-from packages.schemas.models import Attempt, Claim, Verdict, VerdictStatus
+from packages.schemas.models import Attempt, Claim, Verdict, VerdictStatus, VisionAssessment
 from packages.science import numeric_verdict
 
 
@@ -19,3 +19,24 @@ def verify_numeric_claim(claim: Claim, attempt: Attempt, metrics: dict[str, floa
         obtained_value=obtained, delta_pct=round(delta, 6),
         reasoning=f"Paper: {claim.reported_value:g}{claim.unit or ''}; artifact: {obtained:g}{claim.unit or ''}; delta {delta:.3f}% vs {claim.tolerance_pct:g}% tolerance.",
         evidence_links=links)
+
+
+def verify_figure_claim(claim: Claim, attempt: Attempt, reproduced_uri: str,
+    similarity: float, assessment: VisionAssessment) -> Verdict:
+    if not claim.figure_gcs_uri:
+        raise ValueError("Figure claim has no paper figure artifact")
+    if assessment.same_scientific_conclusion and assessment.same_trend \
+        and assessment.same_series_ordering and assessment.comparable_scale:
+        status = VerdictStatus.REPRODUCED
+    elif assessment.same_scientific_conclusion:
+        status = VerdictStatus.PARTIAL
+    else:
+        status = VerdictStatus.FAILED
+    evidence = "; ".join(assessment.specific_evidence)
+    caveats = "; ".join(assessment.caveats) or "none"
+    return Verdict(claim_id=claim.id, attempt_id=attempt.id, status=status,
+        figure_similarity_score=similarity,
+        vision_assessment=f"Evidence: {evidence}. Caveats: {caveats}.",
+        reasoning=("Gemini vision applied the declared trend/order/scale/conclusion rubric; "
+            f"pixel sanity score={similarity:.4f}."),
+        evidence_links=[claim.figure_gcs_uri, reproduced_uri])

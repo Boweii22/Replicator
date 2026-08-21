@@ -84,6 +84,10 @@ class ExecutorWorker:
         create_op = await asyncio.to_thread(self.cloud.create_job, request)
         await asyncio.to_thread(self.cloud.wait_operation, create_op, timeout_seconds=300)
         started = time.monotonic()
+        attempt.started_at = utcnow()
+        attempt.status = "running"
+        attempt.job_name = request.job_name
+        await self.state.put_attempt(attempt)
         run_op = await asyncio.to_thread(self.cloud.run_job, request)
         await asyncio.to_thread(self.cloud.wait_operation, run_op,
             timeout_seconds=request.timeout_seconds + 120)
@@ -91,9 +95,10 @@ class ExecutorWorker:
         metrics_uri = f"{output_uri}/metrics.json"
         self.artifacts.get_bytes(metrics_uri)
         attempt.status, attempt.exit_code = "succeeded", 0
-        attempt.started_at, attempt.finished_at = utcnow(), utcnow()
+        attempt.finished_at = utcnow()
         attempt.metrics_gcs_uri = metrics_uri
-        attempt.job_name = request.job_name
+        attempt.stdout_gcs_uri = f"{output_uri}/stdout.log"
+        attempt.figures_gcs_uri = self.artifacts.list_uris(f"{output_uri}/figures")
         await self.state.put_attempt(attempt)
         await self.state.add_spend(replication.id, usd=plan.estimated_usd,
             job_minutes=elapsed_minutes)
@@ -115,7 +120,15 @@ class ExecutorWorker:
         if not attempts:
             return False
         attempt = attempts[-1]
-        signature = extract_error_signature(str(error))
+        stderr_uri = (f"gs://{os.environ['ARTIFACT_BUCKET']}/{replication.id}/attempts/"
+            f"{attempt.id}/out/stderr.log")
+        try:
+            stderr = self.artifacts.get_bytes(stderr_uri).decode("utf-8", errors="replace")
+            attempt.stdout_gcs_uri = (f"gs://{os.environ['ARTIFACT_BUCKET']}/{replication.id}/"
+                f"attempts/{attempt.id}/out/stdout.log")
+        except Exception:
+            stderr = str(error)
+        signature = extract_error_signature(stderr)
         key = memory_key("experiment", signature)
         known = await self.state.get_memory(key)
         if self.repairer is None:

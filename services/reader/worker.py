@@ -66,14 +66,14 @@ class ReaderWorker:
                 message="Prompt injection suspected; source remains quarantined as untrusted data",
                 detail={"rules": extraction.injection_reasons},
             ))
-        claims = [
-            Claim(
-                replication_id=replication.id,
-                index=index,
-                **candidate.model_dump(),
-            )
-            for index, candidate in enumerate(result.claims)
-        ]
+        claims = []
+        for index, candidate in enumerate(result.claims):
+            data = candidate.model_dump()
+            image_index = data.pop("figure_image_index")
+            figure_uri = (extraction.figure_paths[image_index]
+                if image_index is not None and image_index < len(extraction.figure_paths) else None)
+            claims.append(Claim(replication_id=replication.id, index=index,
+                figure_gcs_uri=figure_uri, **data))
         await self.state.put_claims(replication.id, claims)
         await self.state.set_paper_metadata(
             replication.id, title=result.title, authors=result.authors, pdf_uri=pdf_uri

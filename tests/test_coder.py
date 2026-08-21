@@ -11,4 +11,5 @@ def test_generated_experiment_gets_nonnegotiable_runtime_wrapper() -> None:
     assert payload and len(digest) == 64
     assert "OUTPUT_GCS_URI" in files["replicator_entrypoint.py"]
     assert "if_generation_match=0" in files["replicator_entrypoint.py"]
+    assert "stderr.log" in files["replicator_entrypoint.py"]
     assert "ENTRYPOINT" in files["Dockerfile"]

@@ -32,7 +32,7 @@ class VertexClaimsExtractor:
             + delimit_untrusted(paper.full_text)
         )
         contents = [prompt]
-        for path in paper.figure_paths[:12]:
+        for index, path in enumerate(paper.figure_paths[:12]):
             if path.startswith(("gs://", "file://")):
                 continue
             try:
@@ -40,6 +40,7 @@ class VertexClaimsExtractor:
             except OSError:
                 continue
             mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
+            contents.append(f"PAPER IMAGE INDEX {index}:")
             contents.append(types.Part.from_bytes(data=image, mime_type=mime))
         response = await self.client.aio.models.generate_content(
             model=MODEL,

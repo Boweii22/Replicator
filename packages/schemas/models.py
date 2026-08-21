@@ -106,6 +106,7 @@ class ClaimCandidate(BaseModel):
     unit: str | None = None
     tolerance_pct: float = Field(default=5, gt=0)
     figure_ref: str | None = None
+    figure_image_index: int | None = Field(default=None, ge=0)
     table_ref: str | None = None
     priority: int = Field(default=2, ge=1, le=3)
     feasible: bool
