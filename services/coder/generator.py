@@ -40,6 +40,8 @@ bounded sample or iteration count. Configure expensive estimators explicitly (fo
 more than 2,000 ROCKET kernels). Add network timeouts where supported. Every emitted number must be
 computed by this run; never substitute a paper's reported value or a constant when computation or
 data loading fails. On failure, raise an error and emit no misleading metrics.
+For UCR/UEA time-series data, use `sktime.datasets.load_UCR_UEA_dataset`; never download directly
+from timeseriesclassification.com, whose anti-bot responses are not dataset ZIP files.
 """
         response = await self.client.aio.models.generate_content(
             model=self.model,
