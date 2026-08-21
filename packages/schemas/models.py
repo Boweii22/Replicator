@@ -203,6 +203,15 @@ class ReportManifest(BaseModel):
     signature_algorithm: str | None = None
 
 
+class VisionAssessment(BaseModel):
+    same_trend: bool
+    same_series_ordering: bool
+    comparable_scale: bool
+    same_scientific_conclusion: bool
+    specific_evidence: list[str] = Field(min_length=1)
+    caveats: list[str] = Field(default_factory=list)
+
+
 class WorkMessage(BaseModel):
     event_id: str = Field(default_factory=lambda: uuid4().hex)
     event_type: str

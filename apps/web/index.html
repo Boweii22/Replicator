@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/evidence.css">
 </head>
 <body>
   <div class="noise"></div>
@@ -56,6 +57,12 @@
       </div>
     </section>
 
+    <section id="evidence" class="evidence panel hidden">
+      <div class="panel-title"><span>03</span><div><b>EVIDENCE LEDGER</b><small>CLAIM → ARTIFACT → VERDICT</small></div><strong>FAIL CLOSED</strong></div>
+      <div class="evidence-head"><span>CLAIM</span><span>PAPER</span><span>OBTAINED</span><span>VERDICT</span></div>
+      <div id="claim-rows" class="claim-rows"><p>No verified claims yet.</p></div>
+      <a id="open-report" class="report-button" target="_blank">OPEN EVIDENCE REPORT ↗</a>
+    </section>
     <footer><span>GEMINI 3.5 FLASH · GOOGLE ADK · CLOUD RUN</span><span>EVERY VERDICT HAS A RECEIPT.</span></footer>
   </main>
   <script src="/app.js"></script>

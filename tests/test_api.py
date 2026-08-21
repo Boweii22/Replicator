@@ -31,3 +31,14 @@ def test_rejects_invalid_budget() -> None:
             "budget": {"max_attempts": 0, "max_job_minutes": 10, "max_usd": 1},
         })
         assert response.status_code == 422
+
+
+def test_empty_evidence_report_is_honest() -> None:
+    with TestClient(app) as client:
+        created = client.post("/replications", json={
+            "source_url": "https://arxiv.org/abs/1706.03762"
+        }).json()
+        report = client.get(f"/replications/{created['id']}/report")
+        assert report.status_code == 200
+        assert "EVIDENCE REPORT" in report.text
+        assert "REPRODUCED" not in report.text

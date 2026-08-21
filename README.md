@@ -79,7 +79,8 @@ See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 | Deterministic experiment bundles and Cloud Build request | Implemented and tested |
 | Restricted Cloud Run Jobs adapter and Gemini code repairer | Implemented; live GCP test pending |
 | Artifact-backed numerical verifier and tamper-evident reporter | Implemented and tested |
-| Gemini multimodal scientific figure assessment | Next |
+| Gemini multimodal scientific figure assessment | Implemented; live Vertex test pending |
+| Evidence ledger UI and report endpoint | Implemented and tested |
 | Firestore production adapter and deployed proof | Next |
 
 No row marked “next” is represented as working in the interface or submission materials.

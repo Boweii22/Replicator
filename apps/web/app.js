@@ -24,9 +24,11 @@ $("launch-form").addEventListener("submit", async (event) => {
     $("runtime").textContent = `00:00 / ${String(budget.max_job_minutes).padStart(2,"0")}:00`;
     $("attempt-count").textContent = `0 / ${budget.max_attempts}`;
     $("events").innerHTML = "";
+    $("open-report").href = `/replications/${run.id}/report`;
     document.querySelector(".stage").classList.add("active");
     document.querySelector(".mission").scrollIntoView({behavior:"smooth"});
     connect(run.id);
+    refreshEvidence(run.id);
   } catch (error) {
     alert(error.message);
   } finally {
@@ -51,4 +53,22 @@ function connect(id) {
   source.addEventListener("status", handle);
   source.addEventListener("agent.decision", handle);
   source.onerror = () => $("mission-status").textContent = "RECONNECTING";
+}
+
+async function refreshEvidence(id) {
+  const [claimsResponse, verdictsResponse] = await Promise.all([fetch(`/replications/${id}/claims`), fetch(`/replications/${id}/verdicts`)]);
+  if (!claimsResponse.ok || !verdictsResponse.ok) return;
+  const claims = await claimsResponse.json();
+  const verdicts = await verdictsResponse.json();
+  if (!claims.length) return;
+  const byClaim = Object.fromEntries(verdicts.map(v => [v.claim_id, v]));
+  $("claim-rows").innerHTML = "";
+  claims.forEach(claim => {
+    const verdict = byClaim[claim.id];
+    const row = document.createElement("div"); row.className = "claim-row";
+    [claim.text, claim.reported_value ?? "—", verdict?.obtained_value ?? "—"].forEach(value => { const cell = document.createElement("span"); cell.textContent = value; row.appendChild(cell); });
+    const chip = document.createElement("strong"); chip.className = `verdict ${verdict?.status || ""}`; chip.textContent = verdict?.status || "PENDING"; row.appendChild(chip);
+    $("claim-rows").appendChild(row);
+  });
+  $("evidence").classList.remove("hidden");
 }
