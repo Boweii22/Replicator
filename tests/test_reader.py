@@ -84,3 +84,8 @@ def test_null_agent_defaults_are_normalized_safely() -> None:
     assert (claim.tolerance_pct, claim.priority) == (5, 2)
     assert claim.feasible is False
     assert claim.feasibility_reason == "Model did not establish feasibility"
+
+
+def test_nonpositive_agent_tolerance_uses_conservative_default() -> None:
+    claim = ClaimCandidate(text="Accuracy improved", claim_type="metric", tolerance_pct=0)
+    assert claim.tolerance_pct == 5

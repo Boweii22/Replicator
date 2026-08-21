@@ -116,9 +116,12 @@ class ClaimCandidate(BaseModel):
     @field_validator("tolerance_pct", "priority", mode="before")
     @classmethod
     def numeric_defaults_for_null(cls, value: Any, info: Any) -> Any:
-        if value is not None:
-            return value
-        return 5 if info.field_name == "tolerance_pct" else 2
+        fallback = 5 if info.field_name == "tolerance_pct" else 2
+        if value is None:
+            return fallback
+        if info.field_name == "tolerance_pct" and float(value) <= 0:
+            return fallback
+        return value
 
     @field_validator("feasible", mode="before")
     @classmethod
