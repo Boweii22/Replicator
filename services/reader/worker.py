@@ -32,9 +32,12 @@ class ReaderWorker:
         replication = await self.state.get_replication(message.replication_id)
         if replication is None:
             raise ValueError("Unknown replication")
-        await self.state.transition(
-            replication.id, {ReplicationStatus.QUEUED}, ReplicationStatus.READING
-        )
+        if replication.status == ReplicationStatus.QUEUED:
+            await self.state.transition(
+                replication.id, {ReplicationStatus.QUEUED}, ReplicationStatus.READING
+            )
+        elif replication.status != ReplicationStatus.READING:
+            return
         pdf = await fetch_pdf(replication.source_url)
         pdf_uri = self.artifacts.put_bytes(
             f"{replication.id}/paper/source.pdf", pdf, "application/pdf"

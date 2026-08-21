@@ -25,9 +25,12 @@ def canonical_pdf_url(source_url: str) -> str:
 
 async def fetch_pdf(source_url: str) -> bytes:
     url = canonical_pdf_url(source_url)
-    async with httpx.AsyncClient(timeout=45, follow_redirects=False) as client:
+    async with httpx.AsyncClient(timeout=45, follow_redirects=True, max_redirects=3) as client:
         response = await client.get(url, headers={"User-Agent": "Replicator/0.1 research-agent"})
         response.raise_for_status()
+    final_url = urlparse(str(response.url))
+    if final_url.scheme != "https" or final_url.hostname not in ARXIV_HOSTS:
+        raise ValueError("arXiv redirected the PDF request to an untrusted host")
     content_type = response.headers.get("content-type", "").lower()
     if "pdf" not in content_type or not response.content.startswith(b"%PDF"):
         raise ValueError("Source did not return a PDF")
