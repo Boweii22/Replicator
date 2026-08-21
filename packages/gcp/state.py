@@ -96,6 +96,10 @@ class InMemoryState:
             if attempt.plan_id == plan_id
         ]
 
+    async def get_attempt(self, attempt_id: str) -> Attempt | None:
+        attempt = self.attempts.get(attempt_id)
+        return attempt.model_copy(deep=True) if attempt else None
+
     async def add_spend(self, replication_id: str, *, usd: float, job_minutes: float) -> Spend:
         async with self._lock:
             item = self.replications[replication_id]
@@ -148,6 +152,10 @@ class InMemoryState:
                 return False
             self.processed_events.add(event_id)
             return True
+
+    async def release_event(self, event_id: str) -> None:
+        async with self._lock:
+            self.processed_events.discard(event_id)
 
     async def append_event(self, event: Event) -> Event:
         async with self._condition:

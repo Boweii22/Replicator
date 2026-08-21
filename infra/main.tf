@@ -2,6 +2,7 @@ locals {
   services = toset([
     "aiplatform.googleapis.com", "artifactregistry.googleapis.com", "cloudbuild.googleapis.com",
     "firestore.googleapis.com", "logging.googleapis.com", "pubsub.googleapis.com",
+    "iamcredentials.googleapis.com",
     "run.googleapis.com", "secretmanager.googleapis.com", "storage.googleapis.com",
     "cloudtrace.googleapis.com",
   ])
@@ -72,6 +73,11 @@ resource "google_service_account" "runner" {
   display_name = "Restricted experiment runner"
 }
 
+resource "google_service_account" "builder" {
+  account_id   = "replicator-builder"
+  display_name = "Restricted experiment image builder"
+}
+
 resource "google_cloud_run_v2_service" "worker" {
   for_each = local.worker_topics
   name     = "replicator-${each.key}"
@@ -108,6 +114,18 @@ resource "google_cloud_run_v2_service" "worker" {
       env {
         name  = "ARTIFACT_BUCKET"
         value = google_storage_bucket.artifacts.name
+      }
+      env {
+        name  = "BUILD_SERVICE_ACCOUNT"
+        value = google_service_account.builder.email
+      }
+      env {
+        name  = "RUNNER_SERVICE_ACCOUNT"
+        value = google_service_account.runner.email
+      }
+      env {
+        name  = "RUNTIME_SERVICE_ACCOUNT"
+        value = google_service_account.runtime.email
       }
       resources { limits = { cpu = "1", memory = "1Gi" } }
     }
@@ -227,6 +245,55 @@ resource "google_project_iam_member" "runtime_publish" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_project_iam_member" "runtime_build" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.editor"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_project_iam_member" "runtime_jobs" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_service_account_iam_member" "runtime_uses_runner" {
+  service_account_id = google_service_account.runner.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_service_account_iam_member" "runtime_uses_builder" {
+  service_account_id = google_service_account.builder.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_service_account_iam_member" "runtime_signs_reports" {
+  service_account_id = google_service_account.runtime.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_artifact_registry_repository_iam_member" "builder_push" {
+  location   = google_artifact_registry_repository.images.location
+  repository = google_artifact_registry_repository.images.name
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.builder.email}"
+}
+
+resource "google_project_iam_member" "builder_logs" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.builder.email}"
+}
+
+resource "google_storage_bucket_iam_member" "builder_read_sources" {
+  bucket = google_storage_bucket.artifacts.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.builder.email}"
 }
 
 resource "google_storage_bucket_iam_member" "runtime_artifacts" {

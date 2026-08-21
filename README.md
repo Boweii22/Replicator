@@ -83,6 +83,8 @@ See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 | Evidence ledger UI and report endpoint | Implemented and tested |
 | Firestore-backed cloud API and idempotent reader push worker | Implemented; live GCP test pending |
 | Fresh-project Cloud Build + Terraform deployment script | Implemented; Terraform CLI validation pending |
+| Planner → executor → verifier → IAM-signed reporter cloud workers | Implemented and contract-tested |
+| Pub/Sub failure redelivery claim release | Implemented and tested |
 | Firestore production adapter and deployed proof | Next |
 
 No row marked “next” is represented as working in the interface or submission materials.

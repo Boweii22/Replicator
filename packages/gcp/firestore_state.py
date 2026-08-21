@@ -4,7 +4,18 @@ import os
 import asyncio
 
 from packages.gcp.state import ConflictError
-from packages.schemas.models import Claim, Event, Replication, ReplicationStatus, Verdict, utcnow
+from packages.schemas.models import (
+    Attempt,
+    Claim,
+    Event,
+    ExperimentPlan,
+    Memory,
+    Replication,
+    ReplicationStatus,
+    Spend,
+    Verdict,
+    utcnow,
+)
 
 
 class FirestoreState:
@@ -41,6 +52,9 @@ class FirestoreState:
             return True
 
         return await claim(transaction)
+
+    async def release_event(self, event_id: str) -> None:
+        await self.client.collection("processed_events").document(event_id).delete()
 
     async def transition(
         self, replication_id: str, expected: set[ReplicationStatus], target: ReplicationStatus
@@ -101,6 +115,61 @@ class FirestoreState:
             if verdict.claim_id in claim_ids:
                 verdicts.append(verdict)
         return verdicts
+
+    async def put_plan(self, plan: ExperimentPlan) -> None:
+        await self.client.collection("plans").document(plan.id).set(plan.model_dump(mode="python"))
+
+    async def get_plan(self, plan_id: str) -> ExperimentPlan | None:
+        snapshot = await self.client.collection("plans").document(plan_id).get()
+        return ExperimentPlan.model_validate(snapshot.to_dict()) if snapshot.exists else None
+
+    async def put_attempt(self, attempt: Attempt) -> None:
+        await self.client.collection("attempts").document(attempt.id).set(
+            attempt.model_dump(mode="python")
+        )
+
+    async def get_attempt(self, attempt_id: str) -> Attempt | None:
+        snapshot = await self.client.collection("attempts").document(attempt_id).get()
+        return Attempt.model_validate(snapshot.to_dict()) if snapshot.exists else None
+
+    async def list_attempts(self, plan_id: str) -> list[Attempt]:
+        query = self.client.collection("attempts").where("plan_id", "==", plan_id)
+        attempts = [Attempt.model_validate(doc.to_dict()) async for doc in query.stream()]
+        return sorted(attempts, key=lambda attempt: attempt.n)
+
+    async def add_spend(self, replication_id: str, *, usd: float, job_minutes: float) -> Spend:
+        ref = self.client.collection("replications").document(replication_id)
+        transaction = self.client.transaction()
+
+        @self.firestore.async_transactional
+        async def apply(txn):
+            snapshot = await ref.get(transaction=txn)
+            replication = Replication.model_validate(snapshot.to_dict())
+            replication.spent.usd += usd
+            replication.spent.job_minutes += job_minutes
+            replication.updated_at = utcnow()
+            txn.set(ref, replication.model_dump(mode="python"))
+            return replication.spent
+
+        return await apply(transaction)
+
+    async def put_memory(self, memory: Memory) -> None:
+        await self.client.collection("memory").document(memory.key).set(
+            memory.model_dump(mode="python"), merge=True
+        )
+
+    async def get_memory(self, key: str) -> Memory | None:
+        snapshot = await self.client.collection("memory").document(key).get()
+        return Memory.model_validate(snapshot.to_dict()) if snapshot.exists else None
+
+    async def finish_report(self, replication_id: str, *, report_uri: str, summary: str) -> Replication:
+        ref = self.client.collection("replications").document(replication_id)
+        await ref.update({"status": ReplicationStatus.REPORTED.value, "report_gcs_uri": report_uri,
+            "summary_verdict": summary, "updated_at": utcnow()})
+        result = await self.get_replication(replication_id)
+        if result is None:
+            raise KeyError(replication_id)
+        return result
 
     async def append_event(self, event: Event) -> Event:
         ref = self.client.collection("replications").document(event.replication_id)

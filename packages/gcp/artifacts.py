@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path, PurePosixPath
+from urllib.parse import unquote, urlparse
 
 
 class ArtifactStore:
@@ -24,6 +25,17 @@ class ArtifactStore:
         with target.open("xb") as handle:
             handle.write(data)
         return target.resolve().as_uri()
+
+    def get_bytes(self, uri: str) -> bytes:
+        if uri.startswith("gs://"):
+            from google.cloud import storage
+            bucket_name, key = uri.removeprefix("gs://").split("/", 1)
+            return storage.Client().bucket(bucket_name).blob(key).download_as_bytes()
+        parsed = urlparse(uri)
+        if parsed.scheme != "file":
+            raise ValueError("Only gs:// and file:// evidence URIs are supported")
+        path = Path(unquote(parsed.path.lstrip("/"))) if os.name == "nt" else Path(unquote(parsed.path))
+        return path.read_bytes()
 
     @staticmethod
     def _safe_key(key: str) -> str:

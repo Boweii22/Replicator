@@ -212,6 +212,12 @@ class VisionAssessment(BaseModel):
     caveats: list[str] = Field(default_factory=list)
 
 
+class GeneratedExperiment(BaseModel):
+    run_py: str
+    requirements_txt: str
+    rationale: str
+
+
 class WorkMessage(BaseModel):
     event_id: str = Field(default_factory=lambda: uuid4().hex)
     event_type: str

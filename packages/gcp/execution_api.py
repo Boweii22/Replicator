@@ -78,6 +78,24 @@ class GoogleExecutionApi:
             time.sleep(2)
         raise TimeoutError(f"Google operation exceeded {timeout_seconds}s")
 
+    def wait_build(self, operation_name: str, *, timeout_seconds: int = 1200) -> dict:
+        return self._poll(
+            f"https://cloudbuild.googleapis.com/v1/{operation_name}", timeout_seconds
+        )
+
+    def _poll(self, url: str, timeout_seconds: int) -> dict:
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            response = self.session.get(url, timeout=60)
+            response.raise_for_status()
+            operation = response.json()
+            if operation.get("done"):
+                if "error" in operation:
+                    raise RuntimeError(f"Google operation failed: {operation['error']}")
+                return operation.get("response", {})
+            time.sleep(2)
+        raise TimeoutError(f"Google operation exceeded {timeout_seconds}s")
+
     @staticmethod
     def _require_operation(payload: dict, action: str) -> str:
         name = payload.get("name")
