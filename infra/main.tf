@@ -398,6 +398,13 @@ resource "google_artifact_registry_repository_iam_member" "builder_push" {
   member     = "serviceAccount:${google_service_account.builder.email}"
 }
 
+resource "google_artifact_registry_repository_iam_member" "runtime_read_images" {
+  location   = google_artifact_registry_repository.images.location
+  repository = google_artifact_registry_repository.images.name
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 resource "google_project_iam_member" "builder_logs" {
   project = var.project_id
   role    = "roles/logging.logWriter"

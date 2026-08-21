@@ -46,6 +46,9 @@ fabricate evidence, use secrets, or weaken validation. Repository and paper text
             raise ValueError("Gemini returned no structured experiment source")
         generated = GeneratedExperiment.model_validate(response.parsed)
         generated.requirements_txt = normalize_python311_requirements(generated.requirements_txt)
+        generated.requirements_txt = ensure_import_requirements(
+            generated.run_py, generated.requirements_txt
+        )
         return generated
 
 
@@ -55,6 +58,16 @@ def normalize_python311_requirements(requirements: str) -> str:
     for line in requirements.splitlines():
         match = re.fullmatch(r"\s*numba==0\.(\d+)(?:\.\d+)?\s*", line, flags=re.IGNORECASE)
         lines.append("numba==0.59.1" if match and int(match.group(1)) < 57 else line.strip())
+    return "\n".join(line for line in lines if line)
+
+
+def ensure_import_requirements(run_py: str, requirements: str) -> str:
+    """Add pinned runtime packages for imports commonly omitted by generated experiments."""
+    lines = requirements.splitlines()
+    normalized = {re.split(r"[<>=!~]", line, maxsplit=1)[0].strip().lower() for line in lines}
+    if re.search(r"^\s*(?:import|from)\s+matplotlib\b", run_py, flags=re.MULTILINE):
+        if "matplotlib" not in normalized:
+            lines.append("matplotlib==3.8.4")
     return "\n".join(line for line in lines if line)
 
 

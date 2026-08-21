@@ -1,6 +1,10 @@
 from packages.schemas.models import GeneratedExperiment
 from services.coder.bundle import build_source_bundle
-from services.coder.generator import normalize_python311_requirements, package_generated_experiment
+from services.coder.generator import (
+    ensure_import_requirements,
+    normalize_python311_requirements,
+    package_generated_experiment,
+)
 
 
 def test_generated_experiment_gets_nonnegotiable_runtime_wrapper() -> None:
@@ -22,3 +26,8 @@ def test_generated_experiment_gets_nonnegotiable_runtime_wrapper() -> None:
 def test_python311_requirement_gate_repairs_incompatible_numba() -> None:
     repaired = normalize_python311_requirements("numpy==1.23.5\nnumba==0.56.4\n")
     assert repaired == "numpy==1.23.5\nnumba==0.59.1"
+
+
+def test_import_gate_adds_missing_matplotlib_pin() -> None:
+    repaired = ensure_import_requirements("import matplotlib.pyplot as plt", "numpy==1.26.4")
+    assert repaired == "numpy==1.26.4\nmatplotlib==3.8.4"
