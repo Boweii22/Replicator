@@ -9,6 +9,8 @@ IMAGE="${REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/replicator/app:${TAG}"
 gcloud config set project "${GOOGLE_CLOUD_PROJECT}"
 gcloud services enable cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com
 terraform -chdir=infra init
+WORKSPACE="$(printf '%s' "${GOOGLE_CLOUD_PROJECT}" | tr -c '[:alnum:]_-' '-')"
+terraform -chdir=infra workspace select "${WORKSPACE}" || terraform -chdir=infra workspace new "${WORKSPACE}"
 terraform -chdir=infra apply -auto-approve \
   -target=google_project_service.apis \
   -target=google_artifact_registry_repository.images \

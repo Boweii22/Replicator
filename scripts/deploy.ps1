@@ -27,6 +27,11 @@ Invoke-Checked $Gcloud @("config", "set", "project", $ProjectId)
 Invoke-Checked $Gcloud @("services", "enable", "cloudbuild.googleapis.com",
   "artifactregistry.googleapis.com", "run.googleapis.com")
 Invoke-Checked $Terraform @("-chdir=infra", "init", "-input=false")
+$Workspace = $ProjectId -replace '[^a-zA-Z0-9_-]', '-'
+& $Terraform @("-chdir=infra", "workspace", "select", $Workspace)
+if ($LASTEXITCODE -ne 0) {
+  Invoke-Checked $Terraform @("-chdir=infra", "workspace", "new", $Workspace)
+}
 Invoke-Checked $Terraform @("-chdir=infra", "apply", "-auto-approve",
   "-target=google_project_service.apis",
   "-target=google_artifact_registry_repository.images",
