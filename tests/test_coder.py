@@ -1,6 +1,6 @@
 from packages.schemas.models import GeneratedExperiment
 from services.coder.bundle import build_source_bundle
-from services.coder.generator import package_generated_experiment
+from services.coder.generator import normalize_python311_requirements, package_generated_experiment
 
 
 def test_generated_experiment_gets_nonnegotiable_runtime_wrapper() -> None:
@@ -17,3 +17,8 @@ def test_generated_experiment_gets_nonnegotiable_runtime_wrapper() -> None:
     assert "if_generation_match=0" in files["replicator_entrypoint.py"]
     assert "stderr.log" in files["replicator_entrypoint.py"]
     assert "ENTRYPOINT" in files["Dockerfile"]
+
+
+def test_python311_requirement_gate_repairs_incompatible_numba() -> None:
+    repaired = normalize_python311_requirements("numpy==1.23.5\nnumba==0.56.4\n")
+    assert repaired == "numpy==1.23.5\nnumba==0.59.1"
