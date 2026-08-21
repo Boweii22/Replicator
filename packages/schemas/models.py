@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import uuid4
@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ReplicationStatus(StrEnum):
@@ -48,6 +48,7 @@ class ReplicationCreate(BaseModel):
 
 class Replication(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
+    trace_id: str = Field(default_factory=lambda: uuid4().hex)
     source_url: str
     pdf_gcs_uri: str | None = None
     status: ReplicationStatus = ReplicationStatus.QUEUED
@@ -256,7 +257,7 @@ class PubSubEnvelope(BaseModel):
     subscription: str | None = None
 
     @model_validator(mode="after")
-    def has_data(self) -> "PubSubEnvelope":
+    def has_data(self) -> PubSubEnvelope:
         if "data" not in self.message:
             raise ValueError("Pub/Sub message.data is required")
         return self

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import asyncio
+import os
 
 from packages.gcp.state import ConflictError
 from packages.schemas.models import (
@@ -38,6 +38,12 @@ class FirestoreState:
     async def get_replication(self, replication_id: str) -> Replication | None:
         snapshot = await self.client.collection("replications").document(replication_id).get()
         return Replication.model_validate(snapshot.to_dict()) if snapshot.exists else None
+
+    async def list_replications(self) -> list[Replication]:
+        query = self.client.collection("replications").order_by(
+            "created_at", direction=self.firestore.Query.DESCENDING
+        )
+        return [Replication.model_validate(doc.to_dict()) async for doc in query.stream()]
 
     async def claim_event(self, event_id: str) -> bool:
         ref = self.client.collection("processed_events").document(event_id)
@@ -81,8 +87,9 @@ class FirestoreState:
         self, replication_id: str, *, title: str, authors: list[str], pdf_uri: str
     ) -> Replication:
         ref = self.client.collection("replications").document(replication_id)
-        await ref.update({"title": title, "authors": authors, "pdf_gcs_uri": pdf_uri,
-            "updated_at": utcnow()})
+        await ref.update(
+            {"title": title, "authors": authors, "pdf_gcs_uri": pdf_uri, "updated_at": utcnow()}
+        )
         result = await self.get_replication(replication_id)
         if result is None:
             raise KeyError(replication_id)
@@ -101,8 +108,10 @@ class FirestoreState:
         return sorted(claims, key=lambda claim: claim.index)
 
     async def put_verdict(self, verdict: Verdict) -> None:
-        await self.client.collection("verdicts").document(verdict.id).set(
-            verdict.model_dump(mode="python")
+        await (
+            self.client.collection("verdicts")
+            .document(verdict.id)
+            .set(verdict.model_dump(mode="python"))
         )
 
     async def list_verdicts(self, replication_id: str) -> list[Verdict]:
@@ -124,8 +133,10 @@ class FirestoreState:
         return ExperimentPlan.model_validate(snapshot.to_dict()) if snapshot.exists else None
 
     async def put_attempt(self, attempt: Attempt) -> None:
-        await self.client.collection("attempts").document(attempt.id).set(
-            attempt.model_dump(mode="python")
+        await (
+            self.client.collection("attempts")
+            .document(attempt.id)
+            .set(attempt.model_dump(mode="python"))
         )
 
     async def get_attempt(self, attempt_id: str) -> Attempt | None:
@@ -154,18 +165,34 @@ class FirestoreState:
         return await apply(transaction)
 
     async def put_memory(self, memory: Memory) -> None:
-        await self.client.collection("memory").document(memory.key).set(
-            memory.model_dump(mode="python"), merge=True
+        await (
+            self.client.collection("memory")
+            .document(memory.key)
+            .set(memory.model_dump(mode="python"), merge=True)
         )
 
     async def get_memory(self, key: str) -> Memory | None:
         snapshot = await self.client.collection("memory").document(key).get()
         return Memory.model_validate(snapshot.to_dict()) if snapshot.exists else None
 
-    async def finish_report(self, replication_id: str, *, report_uri: str, summary: str) -> Replication:
+    async def list_memories(self) -> list[Memory]:
+        query = self.client.collection("memory").order_by(
+            "last_used_at", direction=self.firestore.Query.DESCENDING
+        )
+        return [Memory.model_validate(doc.to_dict()) async for doc in query.stream()]
+
+    async def finish_report(
+        self, replication_id: str, *, report_uri: str, summary: str
+    ) -> Replication:
         ref = self.client.collection("replications").document(replication_id)
-        await ref.update({"status": ReplicationStatus.REPORTED.value, "report_gcs_uri": report_uri,
-            "summary_verdict": summary, "updated_at": utcnow()})
+        await ref.update(
+            {
+                "status": ReplicationStatus.REPORTED.value,
+                "report_gcs_uri": report_uri,
+                "summary_verdict": summary,
+                "updated_at": utcnow(),
+            }
+        )
         result = await self.get_replication(replication_id)
         if result is None:
             raise KeyError(replication_id)
@@ -181,8 +208,13 @@ class FirestoreState:
     async def stream_events(self, replication_id: str, after: int = 0):
         cursor = after
         while True:
-            query = (self.client.collection("replications").document(replication_id)
-                .collection("events").where("sequence", ">", cursor).order_by("sequence"))
+            query = (
+                self.client.collection("replications")
+                .document(replication_id)
+                .collection("events")
+                .where("sequence", ">", cursor)
+                .order_by("sequence")
+            )
             found = False
             async for doc in query.stream():
                 event = Event.model_validate(doc.to_dict())

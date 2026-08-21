@@ -29,24 +29,36 @@ class ArtifactStore:
     def get_bytes(self, uri: str) -> bytes:
         if uri.startswith("gs://"):
             from google.cloud import storage
+
             bucket_name, key = uri.removeprefix("gs://").split("/", 1)
             return storage.Client().bucket(bucket_name).blob(key).download_as_bytes()
         parsed = urlparse(uri)
         if parsed.scheme != "file":
             raise ValueError("Only gs:// and file:// evidence URIs are supported")
-        path = Path(unquote(parsed.path.lstrip("/"))) if os.name == "nt" else Path(unquote(parsed.path))
+        path = (
+            Path(unquote(parsed.path.lstrip("/")))
+            if os.name == "nt"
+            else Path(unquote(parsed.path))
+        )
         return path.read_bytes()
 
     def list_uris(self, prefix_uri: str) -> list[str]:
         if prefix_uri.startswith("gs://"):
             from google.cloud import storage
+
             bucket_name, prefix = prefix_uri.removeprefix("gs://").split("/", 1)
-            return [f"gs://{bucket_name}/{blob.name}" for blob in
-                storage.Client().list_blobs(bucket_name, prefix=prefix)]
+            return [
+                f"gs://{bucket_name}/{blob.name}"
+                for blob in storage.Client().list_blobs(bucket_name, prefix=prefix)
+            ]
         parsed = urlparse(prefix_uri)
         if parsed.scheme != "file":
             raise ValueError("Only gs:// and file:// artifact prefixes are supported")
-        root = Path(unquote(parsed.path.lstrip("/"))) if os.name == "nt" else Path(unquote(parsed.path))
+        root = (
+            Path(unquote(parsed.path.lstrip("/")))
+            if os.name == "nt"
+            else Path(unquote(parsed.path))
+        )
         return [path.resolve().as_uri() for path in root.rglob("*") if path.is_file()]
 
     @staticmethod

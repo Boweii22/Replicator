@@ -13,6 +13,45 @@ if (sharedRunId) {
     .then(run => showExistingRun(run)).catch(error => console.error(error));
 }
 
+document.querySelectorAll("nav button[data-view]").forEach(button => button.addEventListener("click", async () => {
+  document.querySelectorAll("nav button").forEach(item => item.classList.remove("nav-active"));
+  button.classList.add("nav-active");
+  document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
+  $(button.dataset.view).classList.remove("hidden");
+  if (button.dataset.view === "archive-view") await loadArchive();
+  if (button.dataset.view === "memory-view") await loadMemory();
+}));
+
+async function loadArchive() {
+  const response = await fetch("/replications");
+  if (!response.ok) return;
+  const runs = await response.json();
+  $("archive-count").textContent = `${runs.length} RUN${runs.length === 1 ? "" : "S"}`;
+  $("archive-list").innerHTML = runs.length ? "" : "<p>No missions yet.</p>";
+  runs.forEach(run => {
+    const row = document.createElement("a"); row.className = "catalog-row"; row.href = `/?run=${run.id}`;
+    const title = document.createElement("b"); title.textContent = run.title || run.source_url;
+    const status = document.createElement("em"); status.textContent = run.status.toUpperCase();
+    const spend = document.createElement("span"); spend.textContent = `$${run.spent.usd.toFixed(2)} / ${run.spent.job_minutes.toFixed(1)} MIN`;
+    row.append(title, status, spend); $("archive-list").appendChild(row);
+  });
+}
+
+async function loadMemory() {
+  const response = await fetch("/memory");
+  if (!response.ok) return;
+  const lessons = await response.json();
+  $("memory-count").textContent = `${lessons.length} LESSON${lessons.length === 1 ? "" : "S"}`;
+  $("memory-list").innerHTML = lessons.length ? "" : "<p>No autonomous repairs learned yet.</p>";
+  lessons.forEach(lesson => {
+    const row = document.createElement("div"); row.className = "catalog-row memory";
+    const key = document.createElement("b"); key.textContent = lesson.key;
+    const text = document.createElement("span"); text.textContent = lesson.lesson;
+    const uses = document.createElement("em"); uses.textContent = `REUSED ${lesson.times_used}x`;
+    row.append(key, text, uses); $("memory-list").appendChild(row);
+  });
+}
+
 async function showExistingRun(run) {
   $("mission").classList.remove("hidden");
   $("mission-id").textContent = `RUN / ${run.id.toUpperCase()}`;

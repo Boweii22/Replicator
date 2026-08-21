@@ -12,16 +12,21 @@ class IAMReportSigner:
         if session is None:
             import google.auth
             from google.auth.transport.requests import AuthorizedSession
+
             credentials, _ = google.auth.default(
-                scopes=["https://www.googleapis.com/auth/cloud-platform"])
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
             session = AuthorizedSession(credentials)
         self.session = session
 
     def sign(self, payload: bytes) -> str:
-        url = ("https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/"
-            f"{self.service_account}:signBlob")
-        response = self.session.post(url,
-            json={"payload": base64.b64encode(payload).decode()}, timeout=30)
+        url = (
+            "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/"
+            f"{self.service_account}:signBlob"
+        )
+        response = self.session.post(
+            url, json={"payload": base64.b64encode(payload).decode()}, timeout=30
+        )
         response.raise_for_status()
         signature = response.json().get("signedBlob")
         if not signature:

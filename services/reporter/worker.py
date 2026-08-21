@@ -27,14 +27,30 @@ class ReporterWorker:
             manifest.signature_algorithm = "GOOGLE_IAM_SIGNBLOB"
         prefix = f"{replication.id}/report"
         report_uri = self.artifacts.put_bytes(f"{prefix}/report.html", report, "text/html")
-        manifest_uri = self.artifacts.put_bytes(f"{prefix}/manifest.json",
-            manifest.model_dump_json(indent=2).encode(), "application/json")
+        manifest_uri = self.artifacts.put_bytes(
+            f"{prefix}/manifest.json",
+            manifest.model_dump_json(indent=2).encode(),
+            "application/json",
+        )
         reproduced = sum(verdict.status == "REPRODUCED" for verdict in verdicts)
-        self.artifacts.put_bytes(f"{prefix}/badge.svg",
-            render_badge(reproduced, len(claims)).encode(), "image/svg+xml")
-        await self.state.finish_report(replication.id, report_uri=report_uri,
-            summary=f"{reproduced}/{len(claims)} claims reproduced")
-        await self.state.append_event(Event(replication_id=replication.id, kind="artifact",
-            stage="reporter", message="Signed replication report is ready",
-            detail={"report_uri": report_uri, "manifest_uri": manifest_uri,
-                "signature_algorithm": manifest.signature_algorithm}))
+        self.artifacts.put_bytes(
+            f"{prefix}/badge.svg", render_badge(reproduced, len(claims)).encode(), "image/svg+xml"
+        )
+        await self.state.finish_report(
+            replication.id,
+            report_uri=report_uri,
+            summary=f"{reproduced}/{len(claims)} claims reproduced",
+        )
+        await self.state.append_event(
+            Event(
+                replication_id=replication.id,
+                kind="artifact",
+                stage="reporter",
+                message="Signed replication report is ready",
+                detail={
+                    "report_uri": report_uri,
+                    "manifest_uri": manifest_uri,
+                    "signature_algorithm": manifest.signature_algorithm,
+                },
+            )
+        )

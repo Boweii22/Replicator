@@ -1,28 +1,44 @@
-import json
 import io
+import json
 
 import pytest
 from PIL import Image
 
-from packages.schemas.models import Attempt, Claim, Replication, VerdictStatus
+from packages.schemas.models import Attempt, Claim, Replication, Verdict, VerdictStatus
 from services.reporter.report import create_manifest, render_badge, render_report
+from services.verifier.figures import figure_similarity
 from services.verifier.metrics import EvidenceError, load_metrics_bytes
 from services.verifier.verifier import verify_numeric_claim
-from services.verifier.figures import figure_similarity
 
 
 def fixture():
-    replication = Replication(source_url="https://arxiv.org/abs/1706.03762", title="Evidence < Test")
-    claim = Claim(replication_id=replication.id, index=0, text="Accuracy > baseline",
-        claim_type="metric", reported_value=90, unit="%", feasible=True)
-    attempt = Attempt(plan_id="plan", n=1, status="succeeded",
-        metrics_gcs_uri="gs://evidence/metrics.json", stdout_gcs_uri="gs://evidence/stdout.log")
+    replication = Replication(
+        source_url="https://arxiv.org/abs/1706.03762", title="Evidence < Test"
+    )
+    claim = Claim(
+        replication_id=replication.id,
+        index=0,
+        text="Accuracy > baseline",
+        claim_type="metric",
+        reported_value=90,
+        unit="%",
+        feasible=True,
+    )
+    attempt = Attempt(
+        plan_id="plan",
+        n=1,
+        status="succeeded",
+        metrics_gcs_uri="gs://evidence/metrics.json",
+        stdout_gcs_uri="gs://evidence/stdout.log",
+    )
     return replication, claim, attempt
 
 
 def test_artifact_backed_verdict_report_and_signature() -> None:
     replication, claim, attempt = fixture()
-    verdict = verify_numeric_claim(claim, attempt, load_metrics_bytes(json.dumps({claim.id: 92}).encode()))
+    verdict = verify_numeric_claim(
+        claim, attempt, load_metrics_bytes(json.dumps({claim.id: 92}).encode())
+    )
     assert verdict.status == VerdictStatus.REPRODUCED
     report = render_report(replication, [claim], [verdict])
     assert "Evidence &lt; Test" in report and "REPRODUCED" in report
@@ -51,3 +67,27 @@ def test_identical_figures_have_perfect_sanity_score() -> None:
     buffer = io.BytesIO()
     Image.new("RGB", (32, 32), "#baff35").save(buffer, format="PNG")
     assert figure_similarity(buffer.getvalue(), buffer.getvalue()) == 1.0
+
+
+def test_report_renders_interactive_figure_evidence() -> None:
+    replication = Replication(source_url="https://arxiv.org/abs/1", title="Figures")
+    claim = Claim(
+        replication_id=replication.id,
+        index=0,
+        text="The curve rises",
+        claim_type="figure",
+        figure_gcs_uri=f"gs://bucket/{replication.id}/paper/figure.png",
+    )
+    verdict = Verdict(
+        claim_id=claim.id,
+        status=VerdictStatus.REPRODUCED,
+        reasoning="Matched",
+        evidence_links=[
+            claim.figure_gcs_uri,
+            f"gs://bucket/{replication.id}/attempts/one/out/figure.png",
+        ],
+    )
+    report = render_report(replication, [claim], [verdict])
+    assert "Overlay reproduced figure" in report
+    assert 'class="ours"' in report
+    assert "/artifact?uri=" in report

@@ -55,9 +55,7 @@ class GoogleExecutionApi:
         return self._require_operation(operation, "Cloud Run job creation")
 
     def run_job(self, request: JobRequest) -> str:
-        job = (
-            f"projects/{request.project}/locations/{request.region}/jobs/{request.job_name}"
-        )
+        job = f"projects/{request.project}/locations/{request.region}/jobs/{request.job_name}"
         response = self.session.post(
             f"https://run.googleapis.com/v2/{job}:run", json={}, timeout=60
         )
@@ -79,9 +77,7 @@ class GoogleExecutionApi:
         raise TimeoutError(f"Google operation exceeded {timeout_seconds}s")
 
     def wait_build(self, operation_name: str, *, timeout_seconds: int = 1200) -> dict:
-        return self._poll(
-            f"https://cloudbuild.googleapis.com/v1/{operation_name}", timeout_seconds
-        )
+        return self._poll(f"https://cloudbuild.googleapis.com/v1/{operation_name}", timeout_seconds)
 
     def _poll(self, url: str, timeout_seconds: int) -> dict:
         deadline = time.monotonic() + timeout_seconds

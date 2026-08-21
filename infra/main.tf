@@ -116,6 +116,18 @@ resource "google_cloud_run_v2_service" "worker" {
         value = var.project_id
       }
       env {
+        name  = "GOOGLE_CLOUD_LOCATION"
+        value = "global"
+      }
+      env {
+        name  = "GOOGLE_GENAI_USE_VERTEXAI"
+        value = "true"
+      }
+      env {
+        name  = "CLOUD_RUN_REGION"
+        value = var.region
+      }
+      env {
         name  = "ARTIFACT_BUCKET"
         value = google_storage_bucket.artifacts.name
       }
@@ -387,6 +399,12 @@ resource "google_artifact_registry_repository_iam_member" "builder_push" {
 resource "google_project_iam_member" "builder_logs" {
   project = var.project_id
   role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.builder.email}"
+}
+
+resource "google_project_iam_member" "builder_build" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
   member  = "serviceAccount:${google_service_account.builder.email}"
 }
 

@@ -8,15 +8,15 @@ from fastapi import FastAPI, Header, HTTPException, Response
 from packages.gcp.artifacts import ArtifactStore
 from packages.gcp.cloud_pubsub import CloudEventBus
 from packages.gcp.firestore_state import FirestoreState
+from packages.gcp.signing import IAMReportSigner
 from packages.schemas.models import PubSubEnvelope, WorkMessage
+from packages.telemetry import configure_telemetry, replication_span
+from services.executor.worker import ExecutorWorker
+from services.planner.worker import PlannerWorker
 from services.reader.extractor import VertexClaimsExtractor
 from services.reader.worker import ReaderWorker
-from services.planner.worker import PlannerWorker
-from services.executor.worker import ExecutorWorker
-from services.verifier.worker import VerifierWorker
 from services.reporter.worker import ReporterWorker
-from packages.gcp.signing import IAMReportSigner
-from packages.telemetry import configure_telemetry, replication_span
+from services.verifier.worker import VerifierWorker
 
 configure_telemetry()
 
@@ -55,9 +55,13 @@ async def pubsub_push(
     else:
         raise HTTPException(status_code=501, detail=f"Worker {service} handler is not registered")
     try:
-        with replication_span(f"worker.{service}", replication_id=message.replication_id,
-            event_id=message.event_id, trace_id=message.trace_id,
-            model=os.getenv("MODEL_ID", "gemini-3.5-flash")):
+        with replication_span(
+            f"worker.{service}",
+            replication_id=message.replication_id,
+            event_id=message.event_id,
+            trace_id=message.trace_id,
+            model=os.getenv("MODEL_ID", "gemini-3.5-flash"),
+        ):
             await worker.handle(message)
     except Exception:
         await cloud_state.release_event(message.event_id)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from packages.schemas.models import (
     Attempt,
@@ -48,6 +48,13 @@ class InMemoryState:
         item = self.replications.get(replication_id)
         return item.model_copy(deep=True) if item else None
 
+    async def list_replications(self) -> list[Replication]:
+        return sorted(
+            (item.model_copy(deep=True) for item in self.replications.values()),
+            key=lambda item: item.created_at,
+            reverse=True,
+        )
+
     async def transition(
         self, replication_id: str, expected: set[ReplicationStatus], target: ReplicationStatus
     ) -> Replication:
@@ -72,7 +79,9 @@ class InMemoryState:
 
     async def put_claims(self, replication_id: str, claims: list[Claim]) -> None:
         async with self._lock:
-            self.claims[replication_id] = {claim.id: claim.model_copy(deep=True) for claim in claims}
+            self.claims[replication_id] = {
+                claim.id: claim.model_copy(deep=True) for claim in claims
+            }
 
     async def list_claims(self, replication_id: str) -> list[Claim]:
         return [claim.model_copy(deep=True) for claim in self.claims[replication_id].values()]
@@ -120,6 +129,13 @@ class InMemoryState:
     async def get_memory(self, key: str) -> Memory | None:
         memory = self.memories.get(key)
         return memory.model_copy(deep=True) if memory else None
+
+    async def list_memories(self) -> list[Memory]:
+        return sorted(
+            (item.model_copy(deep=True) for item in self.memories.values()),
+            key=lambda item: item.last_used_at,
+            reverse=True,
+        )
 
     async def put_verdict(self, verdict: Verdict) -> None:
         async with self._lock:

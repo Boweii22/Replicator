@@ -21,8 +21,9 @@ from services.executor.worker import ExecutorWorker
 
 class Generator:
     async def generate(self, plan):
-        return GeneratedExperiment(run_py="print('compute')", requirements_txt="",
-            rationale="test generation")
+        return GeneratedExperiment(
+            run_py="print('compute')", requirements_txt="", rationale="test generation"
+        )
 
 
 class BrokenCloud:
@@ -38,25 +39,44 @@ class Repairer:
 
 
 def test_executor_retries_then_reports_honest_failure_at_cap() -> None:
-    with patch.dict(os.environ, {
-        "GOOGLE_CLOUD_PROJECT": "project", "GOOGLE_CLOUD_LOCATION": "europe-west1",
-        "ARTIFACT_BUCKET": "unused", "BUILD_SERVICE_ACCOUNT": "builder@example",
-        "RUNNER_SERVICE_ACCOUNT": "runner@example",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "GOOGLE_CLOUD_PROJECT": "project",
+            "GOOGLE_CLOUD_LOCATION": "europe-west1",
+            "ARTIFACT_BUCKET": "unused",
+            "BUILD_SERVICE_ACCOUNT": "builder@example",
+            "RUNNER_SERVICE_ACCOUNT": "runner@example",
+        },
+    ):
         asyncio.run(_scenario())
 
 
 async def _scenario() -> None:
     state, bus = InMemoryState(), LocalEventBus()
-    replication = Replication(source_url="https://arxiv.org/abs/1706.03762",
+    replication = Replication(
+        source_url="https://arxiv.org/abs/1706.03762",
         status=ReplicationStatus.CODING,
-        budget=Budget(max_attempts=2, max_job_minutes=20, max_usd=1))
+        budget=Budget(max_attempts=2, max_job_minutes=20, max_usd=1),
+    )
     await state.create_replication(replication)
-    claim = Claim(replication_id=replication.id, index=0, text="Score is 1",
-        claim_type="metric", reported_value=1, feasible=True)
+    claim = Claim(
+        replication_id=replication.id,
+        index=0,
+        text="Score is 1",
+        claim_type="metric",
+        reported_value=1,
+        feasible=True,
+    )
     await state.put_claims(replication.id, [claim])
-    plan = ExperimentPlan(replication_id=replication.id, claim_ids=[claim.id],
-        strategy="reimplement", estimated_minutes=1, estimated_usd=0.1, steps=["run"])
+    plan = ExperimentPlan(
+        replication_id=replication.id,
+        claim_ids=[claim.id],
+        strategy="reimplement",
+        estimated_minutes=1,
+        estimated_usd=0.1,
+        steps=["run"],
+    )
     await state.put_plan(plan)
     reports = []
     bus.subscribe("report.ready", lambda message: _record(reports, message))

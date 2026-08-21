@@ -53,7 +53,10 @@ def test_runner_contract_rejects_missing_claim() -> None:
 
 
 def test_error_signature_and_memory_key_are_stable() -> None:
-    assert extract_error_signature("boom\nERROR_SIGNATURE:cuda-out-of-memory\n") == "cuda-out-of-memory"
+    assert (
+        extract_error_signature("boom\nERROR_SIGNATURE:cuda-out-of-memory\n")
+        == "cuda-out-of-memory"
+    )
     assert memory_key("Torch", "cuda-out-of-memory") == memory_key("torch", "cuda-out-of-memory")
 
 

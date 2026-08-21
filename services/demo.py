@@ -31,7 +31,9 @@ async def run_calibration_mission() -> Replication:
         budget=Budget(max_attempts=2, max_job_minutes=5, max_usd=0.25),
     )
     await state.create_replication(replication)
-    await _stage(replication.id, "api", "Calibration mission queued; this is not a paper reproduction")
+    await _stage(
+        replication.id, "api", "Calibration mission queued; this is not a paper reproduction"
+    )
     await state.transition(replication.id, {ReplicationStatus.QUEUED}, ReplicationStatus.READING)
     claim = Claim(
         replication_id=replication.id,
@@ -117,10 +119,12 @@ async def run_calibration_mission() -> Replication:
 
 
 async def _stage(replication_id: str, stage: str, message: str) -> None:
-    await state.append_event(Event(
-        replication_id=replication_id,
-        kind="agent.decision",
-        stage=stage,
-        message=message,
-        detail={"mode": "evidence-backed-calibration"},
-    ))
+    await state.append_event(
+        Event(
+            replication_id=replication_id,
+            kind="agent.decision",
+            stage=stage,
+            message=message,
+            detail={"mode": "evidence-backed-calibration"},
+        )
+    )

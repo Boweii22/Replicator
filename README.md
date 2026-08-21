@@ -7,10 +7,12 @@ metrics, figures, cost, and trace spans.
 
 ![Replicator Google Cloud architecture](docs/architecture.png)
 
-> Status: Phase 2 reader slice. The API, typed state contract, idempotent event path, secure arXiv
-> ingestion, PDF/image extraction, prompt-injection screening, ADK reader definition, Vertex Gemini
-> structured claim extraction, immutable artifact adapter, deterministic verdict rubric, SSE stream,
-> Google Cloud Terraform, and tests are implemented. Local mode is explicitly not a fake reproduction.
+![Replicator Mission Control release UI](docs/ui-release.png)
+
+> Status: release candidate. The complete API → reader → planner/coder → executor/healer → verifier →
+> signed reporter chain, Mission Control UI, production Google Cloud adapters, Terraform, and CI gates
+> are implemented. Live paper evidence remains deliberately unclaimed until the target GCP rollout is
+> explicitly authorized and observed.
 
 ## Why it matters
 
@@ -22,23 +24,22 @@ for the next.
 ## Spin-up in 5 commands
 
 ```powershell
-git clone <YOUR_REPOSITORY_URL> replicator
+git clone https://github.com/Boweii22/Replicator.git replicator
 cd replicator
 python -m venv .venv
 .\.venv\Scripts\pip install -e ".[dev]"
 .\.venv\Scripts\uvicorn services.api.main:app --reload --port 8080
 ```
 
-Open `http://localhost:8080/docs`. Create a run with `POST /replications`, inspect it with
-`GET /replications/{id}`, and follow `GET /replications/{id}/events` as an SSE stream.
+Open `http://localhost:8080`. Use **Run evidence-backed calibration** for the local artifact-backed
+calibration, or use the API docs at `/docs`. Real arXiv execution requires the cloud deployment.
 
 ## Cloud deployment
 
-Build and push an immutable image, then run:
+Authenticate `gcloud`, select a billed project, then run the deployment wrapper:
 
 ```powershell
-terraform -chdir=infra init
-terraform -chdir=infra apply -var="project_id=YOUR_PROJECT" -var="image=REGION-docker.pkg.dev/YOUR_PROJECT/replicator/app@sha256:DIGEST"
+.\scripts\deploy.ps1 -ProjectId YOUR_PROJECT -Region europe-west1
 ```
 
 Secret *containers* are provisioned, but secret values are deliberately never handled by Terraform.
@@ -79,8 +80,8 @@ Submission materials: [judging evidence](docs/JUDGING.md), [demo script](docs/DE
 |---|---|
 | API, budgets, SSE mission stream | Implemented and tested |
 | Secure arXiv PDF ingestion | Implemented and tested |
-| PDF text and embedded-image extraction | Implemented; needs a representative-paper fixture |
-| Gemini structured quantitative claims | Implemented; requires Vertex credentials for live test |
+| PDF text and embedded-image extraction | Implemented and tested |
+| Google ADK reader + Gemini structured quantitative claims | Implemented; live Vertex proof pending |
 | Budget-aware experiment planning and runner contract | Implemented and tested |
 | Capped executor fail → diagnose → repair → retry loop | Implemented with runner interfaces and tests |
 | Deterministic experiment bundles and Cloud Build request | Implemented and tested |
@@ -89,7 +90,7 @@ Submission materials: [judging evidence](docs/JUDGING.md), [demo script](docs/DE
 | Gemini multimodal scientific figure assessment | Implemented; live Vertex test pending |
 | Evidence ledger UI and report endpoint | Implemented and tested |
 | Firestore-backed cloud API and idempotent reader push worker | Implemented; live GCP test pending |
-| Fresh-project Cloud Build + Terraform deployment script | Implemented; Terraform CLI validation pending |
+| Fresh-project Cloud Build + Terraform deployment script | Implemented; Terraform validated |
 | Planner → executor → verifier → IAM-signed reporter cloud workers | Implemented and contract-tested |
 | Pub/Sub failure redelivery claim release | Implemented and tested |
 | Live Google Cloud deployment and captured proof | Requires target project authentication |

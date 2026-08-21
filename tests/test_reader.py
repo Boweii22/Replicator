@@ -4,6 +4,8 @@ from uuid import uuid4
 import pytest
 
 from packages.gcp.artifacts import ArtifactStore
+from packages.schemas.models import ReaderResult
+from services.reader.agent import build_agent
 from services.reader.pdf import canonical_pdf_url
 from services.reader.security import delimit_untrusted, scan_untrusted_text
 
@@ -53,3 +55,10 @@ def test_local_artifacts_are_immutable_and_path_safe() -> None:
         store.put_bytes("run-1/paper/source.pdf", b"changed", "application/pdf")
     with pytest.raises(ValueError):
         store.put_bytes("../escape", b"bad", "text/plain")
+
+
+def test_reader_is_a_real_adk_structured_output_agent() -> None:
+    pytest.importorskip("google.adk")
+    agent = build_agent()
+    assert agent.name == "replicator_reader"
+    assert agent.output_schema is ReaderResult

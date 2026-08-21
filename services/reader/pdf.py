@@ -55,7 +55,9 @@ def extract_pdf(pdf_bytes: bytes, workdir: Path) -> PaperExtraction:
     figure_paths: list[str] = []
     for page_index, page in enumerate(document):
         page_target = workdir / f"page-{page_index + 1}.png"
-        page_target.write_bytes(page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False).tobytes("png"))
+        page_target.write_bytes(
+            page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False).tobytes("png")
+        )
         figure_paths.append(str(page_target))
         for image_index, image in enumerate(page.get_images(full=True)):
             xref = image[0]

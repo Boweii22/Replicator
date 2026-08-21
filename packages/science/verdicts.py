@@ -14,7 +14,11 @@ def numeric_verdict(
     if tolerance_pct <= 0:
         raise ValueError("Tolerance must be positive")
     denominator = abs(reported)
-    delta_pct = abs(obtained - reported) * 100 if denominator == 0 else abs(obtained - reported) / denominator * 100
+    delta_pct = (
+        abs(obtained - reported) * 100
+        if denominator == 0
+        else abs(obtained - reported) / denominator * 100
+    )
     if delta_pct <= tolerance_pct:
         return VerdictStatus.REPRODUCED, delta_pct
     if delta_pct <= tolerance_pct * 3:

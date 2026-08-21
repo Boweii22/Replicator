@@ -39,7 +39,9 @@ async def execute_with_healing(
         )
         if not decision.allowed:
             raise RuntimeError(f"Budget stopped execution: {decision.reason}")
-        attempt = Attempt(plan_id=plan_id, n=len(previous) + 1, status="running", started_at=utcnow())
+        attempt = Attempt(
+            plan_id=plan_id, n=len(previous) + 1, status="running", started_at=utcnow()
+        )
         await state.put_attempt(attempt)
         result = await runner.run(attempt)
         attempt.exit_code = result.exit_code
@@ -60,9 +62,11 @@ async def execute_with_healing(
         repaired = await repairer.repair(attempt, signature, known.lesson if known else None)
         await state.put_attempt(repaired)
         if repaired.patch_summary:
-            await state.put_memory(Memory(
-                key=key,
-                lesson=repaired.diagnosis or repaired.patch_summary,
-                fix_snippet=repaired.patch_summary,
-                origin_replication_id=replication_id,
-            ))
+            await state.put_memory(
+                Memory(
+                    key=key,
+                    lesson=repaired.diagnosis or repaired.patch_summary,
+                    fix_snippet=repaired.patch_summary,
+                    origin_replication_id=replication_id,
+                )
+            )

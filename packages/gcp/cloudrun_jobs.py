@@ -29,19 +29,21 @@ def job_spec(request: JobRequest) -> dict:
                 "serviceAccount": request.service_account,
                 "timeout": f"{request.timeout_seconds}s",
                 "maxRetries": 0,
-                "containers": [{
-                    "image": request.image_uri,
-                    "args": ["--out", "/out"],
-                    "env": [
-                        {"name": "REPLICATION_ID", "value": request.replication_id},
-                        {"name": "ATTEMPT_ID", "value": request.attempt_id},
-                        {"name": "OUTPUT_GCS_URI", "value": request.output_uri},
-                    ],
-                    "resources": {
-                        "limits": {"cpu": request.cpu, "memory": request.memory},
-                        "cpuIdle": False,
-                    },
-                }],
+                "containers": [
+                    {
+                        "image": request.image_uri,
+                        "args": ["--out", "/out"],
+                        "env": [
+                            {"name": "REPLICATION_ID", "value": request.replication_id},
+                            {"name": "ATTEMPT_ID", "value": request.attempt_id},
+                            {"name": "OUTPUT_GCS_URI", "value": request.output_uri},
+                        ],
+                        "resources": {
+                            "limits": {"cpu": request.cpu, "memory": request.memory},
+                            "cpuIdle": False,
+                        },
+                    }
+                ],
             },
         },
         "labels": {"replication-id": request.replication_id[:63]},

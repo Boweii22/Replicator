@@ -14,6 +14,7 @@ class CloudEventBus:
 
     async def publish(self, topic: str, message: WorkMessage) -> None:
         path = self.publisher.topic_path(self.project, topic)
-        future = self.publisher.publish(path, message.model_dump_json().encode(),
-            event_type=message.event_type)
+        future = self.publisher.publish(
+            path, message.model_dump_json().encode(), event_type=message.event_type
+        )
         future.result(timeout=30)

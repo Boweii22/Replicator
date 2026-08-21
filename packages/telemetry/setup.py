@@ -38,9 +38,11 @@ def configure_telemetry() -> None:
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-            provider = TracerProvider(resource=Resource.create({
-                "service.name": os.getenv("SERVICE_NAME", "replicator-api")
-            }))
+            provider = TracerProvider(
+                resource=Resource.create(
+                    {"service.name": os.getenv("SERVICE_NAME", "replicator-api")}
+                )
+            )
             provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter()))
             trace.set_tracer_provider(provider)
         except ModuleNotFoundError:

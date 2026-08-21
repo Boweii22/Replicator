@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07100d">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%2307100d'/%3E%3Cpath d='M17 49V15h17c9 0 14 5 14 12 0 6-3 10-9 12l10 10H37l-9-10v10H17zm11-20h6c3 0 4-1 4-3s-1-3-4-3h-6v6z' fill='%23baff35'/%3E%3C/svg%3E">
   <title>Replicator — Evidence, not vibes.</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,10 +16,11 @@
   <div class="noise"></div>
   <header>
     <a class="brand" href="/"><span class="mark">R</span><span>REPLICATOR</span><em>LAB 01</em></a>
-    <nav><button class="nav-active">Mission</button><button>Archive</button><button>Memory</button></nav>
+    <nav><button class="nav-active" data-view="mission-view">Mission</button><button data-view="archive-view">Archive</button><button data-view="memory-view">Memory</button></nav>
     <div class="system"><i></i> SYSTEM NOMINAL <span id="clock">00:00:00Z</span></div>
   </header>
   <main>
+    <div id="mission-view" class="view">
     <section class="hero">
       <div>
         <p class="eyebrow">AUTONOMOUS SCIENTIFIC VERIFICATION</p>
@@ -63,6 +65,15 @@
       <div class="evidence-head"><span>CLAIM</span><span>PAPER</span><span>OBTAINED</span><span>VERDICT</span></div>
       <div id="claim-rows" class="claim-rows"><p>No verified claims yet.</p></div>
       <a id="open-report" class="report-button" target="_blank">OPEN EVIDENCE REPORT ↗</a>
+    </section>
+    </div>
+    <section id="archive-view" class="view panel catalog hidden">
+      <div class="panel-title"><span>AR</span><div><b>REPLICATION ARCHIVE</b><small>DURABLE MISSIONS / SHAREABLE EVIDENCE</small></div><strong id="archive-count">0 RUNS</strong></div>
+      <div id="archive-list" class="catalog-list"><p>Loading missions...</p></div>
+    </section>
+    <section id="memory-view" class="view panel catalog hidden">
+      <div class="panel-title"><span>MX</span><div><b>REPAIR MEMORY</b><small>CROSS-PAPER LESSONS / VERIFIED FAILURES</small></div><strong id="memory-count">0 LESSONS</strong></div>
+      <div id="memory-list" class="catalog-list"><p>Loading lessons...</p></div>
     </section>
     <footer><span>GEMINI 3.5 FLASH · GOOGLE ADK · CLOUD RUN</span><span>EVERY VERDICT HAS A RECEIPT.</span></footer>
   </main>

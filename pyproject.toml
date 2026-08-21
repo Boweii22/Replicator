@@ -44,3 +44,4 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["E501"] # Formatter cannot safely wrap generated prompts, Dockerfiles, or HTML.

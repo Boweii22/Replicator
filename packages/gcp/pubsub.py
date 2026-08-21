@@ -29,4 +29,3 @@ class LocalEventBus:
 
 
 bus = LocalEventBus()
-
