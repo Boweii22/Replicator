@@ -218,6 +218,17 @@ class GeneratedExperiment(BaseModel):
     rationale: str
 
 
+class PlanProposal(BaseModel):
+    strategy: str
+    repo_url: str | None = None
+    dataset_sources: list[str] = Field(default_factory=list)
+    estimated_minutes: float = Field(gt=0)
+    estimated_usd: float = Field(ge=0)
+    base_image: str = "python:3.11-slim"
+    steps: list[str] = Field(min_length=1)
+    risks: list[str] = Field(default_factory=list)
+
+
 class WorkMessage(BaseModel):
     event_id: str = Field(default_factory=lambda: uuid4().hex)
     event_type: str

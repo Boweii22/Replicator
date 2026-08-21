@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from packages.schemas.models import Event, ReplicationStatus, WorkMessage
-from services.planner.planner import build_plan
 from services.planner.discovery import RepositoryDiscovery
+from services.planner.generator import VertexPlanGenerator
 
 
 class PlannerWorker:
-    def __init__(self, state, bus, discovery=None) -> None:
+    def __init__(self, state, bus, discovery=None, generator=None) -> None:
         self.state = state
         self.bus = bus
         self.discovery = discovery or RepositoryDiscovery()
+        self.generator = generator or VertexPlanGenerator()
 
     async def handle(self, message: WorkMessage) -> None:
         if not await self.state.claim_event(message.event_id):
@@ -19,7 +20,7 @@ class PlannerWorker:
             raise ValueError("Unknown replication")
         claims = await self.state.list_claims(replication.id)
         official_repo = await self.discovery.find_official_repo(replication.title or "")
-        plan = build_plan(replication.id, claims, replication.budget, official_repo=official_repo)
+        plan = await self.generator.create(replication, claims, official_repo)
         await self.state.put_plan(plan)
         await self.state.transition(
             replication.id, {ReplicationStatus.PLANNING}, ReplicationStatus.CODING

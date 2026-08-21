@@ -53,8 +53,8 @@ resource "google_firestore_database" "state" {
 }
 
 resource "google_pubsub_topic" "topics" {
-  for_each = local.all_topics
-  name     = each.value
+  for_each   = local.all_topics
+  name       = each.value
   depends_on = [google_project_service.apis]
 }
 
@@ -185,9 +185,9 @@ resource "google_cloud_run_v2_service_iam_member" "push_invoker" {
 }
 
 resource "google_pubsub_subscription" "worker" {
-  for_each = local.worker_topics
-  name     = "${each.value}-${each.key}"
-  topic    = google_pubsub_topic.topics[each.value].id
+  for_each             = local.worker_topics
+  name                 = "${each.value}-${each.key}"
+  topic                = google_pubsub_topic.topics[each.value].id
   ack_deadline_seconds = 600
   push_config {
     push_endpoint = "${google_cloud_run_v2_service.worker[each.key].uri}/pubsub"
@@ -208,8 +208,8 @@ resource "google_pubsub_subscription" "worker" {
 }
 
 resource "google_pubsub_subscription" "job_finished_executor" {
-  name     = "job.finished-executor"
-  topic    = google_pubsub_topic.topics["job.finished"].id
+  name                 = "job.finished-executor"
+  topic                = google_pubsub_topic.topics["job.finished"].id
   ack_deadline_seconds = 600
   push_config {
     push_endpoint = "${google_cloud_run_v2_service.worker["executor"].uri}/pubsub"
@@ -270,7 +270,7 @@ resource "google_cloud_scheduler_job" "janitor" {
   time_zone = "Etc/UTC"
   http_target {
     http_method = "POST"
-    uri = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.janitor.name}:run"
+    uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.janitor.name}:run"
     oauth_token {
       service_account_email = google_service_account.scheduler.email
     }

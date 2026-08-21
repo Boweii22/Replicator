@@ -70,7 +70,8 @@ See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 
 Submission materials: [judging evidence](docs/JUDGING.md), [demo script](docs/DEMO_SCRIPT.md),
 [Devpost draft](docs/DEVPOST.md), [article draft](docs/BLOG_DRAFT.md), and
-[social draft](docs/SOCIAL_DRAFT.md).
+[social draft](docs/SOCIAL_DRAFT.md). The locked reproduction portfolio is in
+[demo papers](docs/DEMO_PAPERS.md).
 
 ## Implementation ledger
 

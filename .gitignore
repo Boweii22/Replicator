@@ -11,3 +11,5 @@ pytest-cache-files-*/
 .test-artifacts/
 .test-runtime/
 .chrome-qa*/
+.tools-terraform/
+.tools-terraform.zip
