@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Protocol
 
 from packages.schemas.models import PaperExtraction, ReaderResult
@@ -30,9 +31,19 @@ class VertexClaimsExtractor:
             f"The parser observed {paper.page_count} pages and {len(paper.figure_paths)} images.\n"
             + delimit_untrusted(paper.full_text)
         )
+        contents = [prompt]
+        for path in paper.figure_paths[:12]:
+            if path.startswith(("gs://", "file://")):
+                continue
+            try:
+                image = Path(path).read_bytes()
+            except OSError:
+                continue
+            mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
+            contents.append(types.Part.from_bytes(data=image, mime_type=mime))
         response = await self.client.aio.models.generate_content(
             model=MODEL,
-            contents=prompt,
+            contents=contents,
             config=types.GenerateContentConfig(
                 temperature=0.1,
                 response_mime_type="application/json",

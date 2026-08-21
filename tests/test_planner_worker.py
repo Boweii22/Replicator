@@ -21,7 +21,7 @@ async def _scenario() -> None:
     received = []
     bus.subscribe("job.dispatch", lambda message: _record(received, message))
     message = WorkMessage(event_type="plan.ready", replication_id=replication.id)
-    worker = PlannerWorker(state, bus)
+    worker = PlannerWorker(state, bus, Discovery())
     await worker.handle(message)
     await bus.drain()
     updated = await state.get_replication(replication.id)
@@ -33,3 +33,8 @@ async def _scenario() -> None:
 
 async def _record(target: list, message: WorkMessage) -> None:
     target.append(message)
+
+
+class Discovery:
+    async def find_official_repo(self, title: str):
+        return "https://github.com/example/official"

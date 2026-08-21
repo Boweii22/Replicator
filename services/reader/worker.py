@@ -40,6 +40,7 @@ class ReaderWorker:
         )
         with tempfile.TemporaryDirectory(prefix="replicator-reader-") as temp:
             extraction = extract_pdf(pdf, Path(temp))
+            result = await self.extractor.extract(extraction)
             figure_uris = []
             for index, figure_path in enumerate(extraction.figure_paths, start=1):
                 path = Path(figure_path)
@@ -65,7 +66,6 @@ class ReaderWorker:
                 message="Prompt injection suspected; source remains quarantined as untrusted data",
                 detail={"rules": extraction.injection_reasons},
             ))
-        result = await self.extractor.extract(extraction)
         claims = [
             Claim(
                 replication_id=replication.id,
