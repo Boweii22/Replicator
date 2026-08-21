@@ -1,0 +1,2 @@
+"""Multimodal paper reader service."""
+

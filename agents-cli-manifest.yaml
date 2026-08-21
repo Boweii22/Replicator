@@ -1,0 +1,5 @@
+name: replicator-reader
+agent_directory: services/reader
+create_params:
+  deployment_target: cloud_run
+  session_type: in_memory

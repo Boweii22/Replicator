@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07100d">
+  <title>Replicator — Evidence, not vibes.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header>
+    <a class="brand" href="/"><span class="mark">R</span><span>REPLICATOR</span><em>LAB 01</em></a>
+    <nav><button class="nav-active">Mission</button><button>Archive</button><button>Memory</button></nav>
+    <div class="system"><i></i> SYSTEM NOMINAL <span id="clock">00:00:00Z</span></div>
+  </header>
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">AUTONOMOUS SCIENTIFIC VERIFICATION</p>
+        <h1>Trust the <span>evidence.</span><br>Question the claim.</h1>
+        <p class="lede">Replicator reads a paper, rebuilds its experiment, heals failures, and returns a cryptographically addressable trail from claim to code to result.</p>
+      </div>
+      <div class="radar" aria-hidden="true"><div class="sweep"></div><b>VERIFY</b><small>NO CLAIM WITHOUT ARTIFACT</small></div>
+    </section>
+
+    <section class="launch panel">
+      <div class="panel-title"><span>01</span><div><b>NEW REPLICATION</b><small>ARXIV SOURCE / ZERO HUMAN INTERVENTION</small></div><strong>READY</strong></div>
+      <form id="launch-form">
+        <label class="url"><span>SOURCE</span><input id="source" type="url" required value="https://arxiv.org/abs/1706.03762" aria-label="arXiv URL"><kbd>ARXIV</kbd></label>
+        <div class="budgets">
+          <label><span>ATTEMPTS <output id="attempts-out">3</output></span><input id="attempts" type="range" min="1" max="8" value="3"></label>
+          <label><span>TIME CAP <output id="minutes-out">20 min</output></span><input id="minutes" type="range" min="5" max="120" step="5" value="20"></label>
+          <label><span>COST CAP <output id="cost-out">$1.00</output></span><input id="cost" type="range" min="0.25" max="10" step="0.25" value="1"></label>
+        </div>
+        <button class="launch-button" type="submit"><span>BEGIN AUTONOMOUS RUN</span><i>→</i></button>
+      </form>
+    </section>
+
+    <section id="mission" class="mission panel hidden">
+      <div class="panel-title"><span>02</span><div><b>LIVE MISSION</b><small id="mission-id">WAITING</small></div><strong id="mission-status">QUEUED</strong></div>
+      <div class="pipeline" id="pipeline">
+        <div class="stage"><i>01</i><b>READER</b><small>Paper → claims</small></div><div class="line"></div>
+        <div class="stage"><i>02</i><b>PLANNER</b><small>Claims → plan</small></div><div class="line"></div>
+        <div class="stage"><i>03</i><b>CODER</b><small>Plan → image</small></div><div class="line"></div>
+        <div class="stage"><i>04</i><b>EXECUTOR</b><small>Run → heal</small></div><div class="line"></div>
+        <div class="stage"><i>05</i><b>VERIFIER</b><small>Evidence → verdict</small></div><div class="line"></div>
+        <div class="stage"><i>06</i><b>REPORTER</b><small>Proof → report</small></div>
+      </div>
+      <div class="telemetry">
+        <article><header><b>AGENT DECISION STREAM</b><span>LIVE</span></header><div id="events" class="events"><p class="empty">Awaiting mission telemetry…</p></div></article>
+        <aside><b>RUN CONSTRAINTS</b><dl><dt>Spend</dt><dd id="spend">$0.00 / $1.00</dd><dt>Runtime</dt><dd id="runtime">00:00 / 20:00</dd><dt>Attempts</dt><dd id="attempt-count">0 / 3</dd><dt>Evidence policy</dt><dd>FAIL CLOSED</dd></dl><p>Local mode validates orchestration only. It will never invent an obtained value or reproduction verdict.</p></aside>
+      </div>
+    </section>
+
+    <footer><span>GEMINI 3.5 FLASH · GOOGLE ADK · CLOUD RUN</span><span>EVERY VERDICT HAS A RECEIPT.</span></footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
