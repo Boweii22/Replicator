@@ -5,6 +5,8 @@ paper and a hard budget; it extracts quantitative claims, plans and runs sandbox
 self-heals failures, and returns a signed evidence graph connecting every verdict to code, logs,
 metrics, figures, cost, and trace spans.
 
+![Replicator Google Cloud architecture](docs/architecture.png)
+
 > Status: Phase 2 reader slice. The API, typed state contract, idempotent event path, secure arXiv
 > ingestion, PDF/image extraction, prompt-injection screening, ADK reader definition, Vertex Gemini
 > structured claim extraction, immutable artifact adapter, deterministic verdict rubric, SSE stream,
@@ -66,6 +68,10 @@ Add versions using Secret Manager after apply.
 
 See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 
+Submission materials: [judging evidence](docs/JUDGING.md), [demo script](docs/DEMO_SCRIPT.md),
+[Devpost draft](docs/DEVPOST.md), [article draft](docs/BLOG_DRAFT.md), and
+[social draft](docs/SOCIAL_DRAFT.md).
+
 ## Implementation ledger
 
 | Capability | State |
@@ -85,6 +91,6 @@ See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 | Fresh-project Cloud Build + Terraform deployment script | Implemented; Terraform CLI validation pending |
 | Planner → executor → verifier → IAM-signed reporter cloud workers | Implemented and contract-tested |
 | Pub/Sub failure redelivery claim release | Implemented and tested |
-| Firestore production adapter and deployed proof | Next |
+| Live Google Cloud deployment and captured proof | Requires target project authentication |
 
 No row marked “next” is represented as working in the interface or submission materials.

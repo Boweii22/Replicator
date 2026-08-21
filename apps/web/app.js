@@ -7,6 +7,28 @@ const fields = [
 fields.forEach(([input, output, format]) => $(input).addEventListener("input", e => $(output).value = format(e.target.value)));
 setInterval(() => $("clock").textContent = new Date().toISOString().slice(11, 19) + "Z", 1000);
 
+const sharedRunId = new URLSearchParams(location.search).get("run");
+if (sharedRunId) {
+  fetch(`/replications/${sharedRunId}`).then(response => response.ok ? response.json() : Promise.reject(new Error("Run not found")))
+    .then(run => showExistingRun(run)).catch(error => console.error(error));
+}
+
+async function showExistingRun(run) {
+  $("mission").classList.remove("hidden");
+  $("mission-id").textContent = `RUN / ${run.id.toUpperCase()}`;
+  $("mission-status").textContent = run.status.toUpperCase();
+  $("open-report").href = `/replications/${run.id}/report`;
+  const stages = ["queued", "reading", "planning", "coding", "running", "verifying", "reported"];
+  const reached = stages.indexOf(run.status);
+  document.querySelectorAll(".stage").forEach((stage, index) => {
+    if (index <= Math.max(0, reached - 1)) stage.classList.add("active");
+  });
+  $("events").innerHTML = "";
+  connect(run.id);
+  await refreshEvidence(run.id);
+  $("mission").scrollIntoView({behavior: "instant"});
+}
+
 $("launch-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = event.submitter;
@@ -29,6 +51,7 @@ $("launch-form").addEventListener("submit", async (event) => {
     document.querySelector(".mission").scrollIntoView({behavior:"smooth"});
     connect(run.id);
     refreshEvidence(run.id);
+    history.replaceState(null, "", `?run=${run.id}`);
   } catch (error) {
     alert(error.message);
   } finally {
@@ -70,6 +93,7 @@ $("demo-button").addEventListener("click", async () => {
     $("events").innerHTML = "";
     connect(run.id);
     await refreshEvidence(run.id);
+    history.replaceState(null, "", `?run=${run.id}`);
     $("mission").scrollIntoView({behavior: "smooth"});
   } catch (error) { alert(error.message); }
   finally { button.disabled = false; button.textContent = "RUN EVIDENCE-BACKED CALIBRATION"; }

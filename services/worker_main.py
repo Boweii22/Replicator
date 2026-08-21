@@ -16,6 +16,9 @@ from services.executor.worker import ExecutorWorker
 from services.verifier.worker import VerifierWorker
 from services.reporter.worker import ReporterWorker
 from packages.gcp.signing import IAMReportSigner
+from packages.telemetry import configure_telemetry, replication_span
+
+configure_telemetry()
 
 app = FastAPI(title="Replicator worker")
 
@@ -52,7 +55,10 @@ async def pubsub_push(
     else:
         raise HTTPException(status_code=501, detail=f"Worker {service} handler is not registered")
     try:
-        await worker.handle(message)
+        with replication_span(f"worker.{service}", replication_id=message.replication_id,
+            event_id=message.event_id, trace_id=message.trace_id,
+            model=os.getenv("MODEL_ID", "gemini-3.5-flash")):
+            await worker.handle(message)
     except Exception:
         await cloud_state.release_event(message.event_id)
         raise

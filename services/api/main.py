@@ -15,6 +15,9 @@ from packages.schemas.models import Claim, Event, Replication, ReplicationCreate
 from services.pipeline import register_local_pipeline
 from services.reporter.report import render_report
 from services.demo import run_calibration_mission
+from packages.telemetry import configure_telemetry
+
+configure_telemetry()
 
 app = FastAPI(title="Replicator API", version="0.1.0")
 app.add_middleware(

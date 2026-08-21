@@ -10,3 +10,4 @@ pytest-cache-files-*/
 .artifacts/
 .test-artifacts/
 .test-runtime/
+.chrome-qa*/

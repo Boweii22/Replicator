@@ -4,7 +4,7 @@ locals {
     "firestore.googleapis.com", "logging.googleapis.com", "pubsub.googleapis.com",
     "iamcredentials.googleapis.com",
     "run.googleapis.com", "secretmanager.googleapis.com", "storage.googleapis.com",
-    "cloudtrace.googleapis.com",
+    "cloudtrace.googleapis.com", "cloudscheduler.googleapis.com",
   ])
   worker_topics = {
     reader   = "replication.requested"
@@ -205,6 +205,77 @@ resource "google_pubsub_subscription" "worker" {
     maximum_backoff = "300s"
   }
   depends_on = [google_cloud_run_v2_service_iam_member.push_invoker]
+}
+
+resource "google_pubsub_subscription" "job_finished_executor" {
+  name     = "job.finished-executor"
+  topic    = google_pubsub_topic.topics["job.finished"].id
+  ack_deadline_seconds = 600
+  push_config {
+    push_endpoint = "${google_cloud_run_v2_service.worker["executor"].uri}/pubsub"
+    oidc_token {
+      service_account_email = google_service_account.push.email
+      audience              = google_cloud_run_v2_service.worker["executor"].uri
+    }
+  }
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.topics["dead-letter"].id
+    max_delivery_attempts = 5
+  }
+  depends_on = [google_cloud_run_v2_service_iam_member.push_invoker]
+}
+
+resource "google_cloud_run_v2_job" "janitor" {
+  name     = "replicator-janitor"
+  location = var.region
+  template {
+    task_count = 1
+    template {
+      service_account = google_service_account.runtime.email
+      timeout         = "300s"
+      max_retries     = 1
+      containers {
+        image   = var.image
+        command = ["python", "-m", "services.janitor.main"]
+        env {
+          name  = "GOOGLE_CLOUD_PROJECT"
+          value = var.project_id
+        }
+        env {
+          name  = "FIRESTORE_DATABASE"
+          value = google_firestore_database.state.name
+        }
+      }
+    }
+  }
+}
+
+resource "google_service_account" "scheduler" {
+  account_id   = "replicator-scheduler"
+  display_name = "Replicator janitor scheduler"
+}
+
+resource "google_cloud_run_v2_job_iam_member" "scheduler_runs_janitor" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.janitor.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.scheduler.email}"
+}
+
+resource "google_cloud_scheduler_job" "janitor" {
+  name      = "replicator-janitor"
+  region    = var.region
+  schedule  = "*/15 * * * *"
+  time_zone = "Etc/UTC"
+  http_target {
+    http_method = "POST"
+    uri = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.janitor.name}:run"
+    oauth_token {
+      service_account_email = google_service_account.scheduler.email
+    }
+  }
+  depends_on = [google_cloud_run_v2_job_iam_member.scheduler_runs_janitor]
 }
 
 resource "google_secret_manager_secret" "github_token" {
