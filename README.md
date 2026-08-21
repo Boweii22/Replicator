@@ -81,6 +81,8 @@ See [architecture decisions](docs/DECISIONS.md) and the Terraform in `infra/`.
 | Artifact-backed numerical verifier and tamper-evident reporter | Implemented and tested |
 | Gemini multimodal scientific figure assessment | Implemented; live Vertex test pending |
 | Evidence ledger UI and report endpoint | Implemented and tested |
+| Firestore-backed cloud API and idempotent reader push worker | Implemented; live GCP test pending |
+| Fresh-project Cloud Build + Terraform deployment script | Implemented; Terraform CLI validation pending |
 | Firestore production adapter and deployed proof | Next |
 
 No row marked “next” is represented as working in the interface or submission materials.

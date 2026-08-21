@@ -5,5 +5,4 @@ COPY packages packages
 COPY services services
 RUN pip install --no-cache-dir .
 ENV PORT=8080
-CMD ["sh", "-c", "uvicorn services.api.main:app --host 0.0.0.0 --port ${PORT}"]
-
+CMD ["sh", "-c", "uvicorn ${APP_MODULE:-services.api.main:app} --host 0.0.0.0 --port ${PORT}"]

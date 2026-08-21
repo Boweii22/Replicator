@@ -90,6 +90,14 @@ resource "google_cloud_run_v2_service" "worker" {
         value = each.key
       }
       env {
+        name  = "APP_MODULE"
+        value = "services.worker_main:app"
+      }
+      env {
+        name  = "FIRESTORE_DATABASE"
+        value = google_firestore_database.state.name
+      }
+      env {
         name  = "MODEL_ID"
         value = var.model_id
       }
@@ -105,6 +113,48 @@ resource "google_cloud_run_v2_service" "worker" {
     }
   }
   depends_on = [google_project_service.apis]
+}
+
+resource "google_cloud_run_v2_service" "api" {
+  name     = "replicator-api"
+  location = var.region
+  ingress  = var.allowed_ingress
+  template {
+    service_account = google_service_account.runtime.email
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 3
+    }
+    containers {
+      image = var.image
+      env {
+        name  = "APP_MODULE"
+        value = "services.api.main:app"
+      }
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+      env {
+        name  = "FIRESTORE_DATABASE"
+        value = google_firestore_database.state.name
+      }
+      env {
+        name  = "ARTIFACT_BUCKET"
+        value = google_storage_bucket.artifacts.name
+      }
+      resources { limits = { cpu = "1", memory = "1Gi" } }
+    }
+  }
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "public_api" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.api.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 resource "google_cloud_run_v2_service_iam_member" "push_invoker" {
@@ -164,6 +214,18 @@ resource "google_project_iam_member" "runtime_vertex" {
 resource "google_project_iam_member" "runtime_trace" {
   project = var.project_id
   role    = "roles/cloudtrace.agent"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_project_iam_member" "runtime_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_project_iam_member" "runtime_publish" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_service_account.runtime.email}"
 }
 
