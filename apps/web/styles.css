@@ -209,6 +209,13 @@ input[type="range"] { width: 100%; margin-top: 18px; accent-color: var(--blue); 
 .catalog-row span { color: var(--muted); font: 10px "DM Mono"; }
 .catalog-row em { justify-self: start; padding: 7px 9px; color: white; background: var(--blue); border: 1.5px solid var(--ink); border-radius: 999px; font: 700 9px "DM Mono"; font-style: normal; }
 .catalog-row.memory { grid-template-columns: 1fr 2fr .6fr; }
+.run-identity, .memory-identity { min-width: 0; display: grid; gap: 6px; }
+.run-identity small { color: var(--muted); font: 9px "DM Mono"; letter-spacing: .04em; }
+.memory-identity a { width: max-content; color: var(--blue-dark); font: 700 9px "DM Mono"; text-decoration: none; }
+.catalog-row em[data-tone="reproduced"] { color: var(--ink); background: var(--lime); }
+.catalog-row em[data-tone="failed"] { color: white; background: var(--red); }
+.catalog-row em[data-tone="skipped"] { color: var(--ink); background: #ddd8ce; }
+.catalog-row em[data-tone="system"] { color: white; background: var(--ink); }
 footer { width: min(1280px, calc(100% - 48px)); min-height: 110px; margin: auto; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font: 9px "DM Mono"; letter-spacing: .1em; text-transform: uppercase; }
 
 @media (max-width: 980px) {

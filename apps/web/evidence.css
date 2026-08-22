@@ -5,6 +5,10 @@
 .claim-row { min-height: 74px; border-top: 1.5px solid var(--ink); font-size: 12px; }
 .claim-row:first-child { border-top: 0; }
 .claim-copy { font-weight: 700; line-height: 1.45; }
+.claim-detail { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 18px; padding: 13px 15px; background: #ebe7dc; border: 1px solid #c9c3b7; }
+.claim-detail p { margin: 0; color: #4d4a43; font-size: 11px; line-height: 1.5; }
+.claim-artifacts { flex: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.claim-artifacts a { padding: 7px 9px; color: white; background: var(--blue); border: 1.5px solid var(--ink); text-decoration: none; font: 700 9px "DM Mono"; }
 .verdict { width: max-content; padding: 7px 9px; color: var(--ink); background: #e7e2d8; border: 1.5px solid var(--ink); border-radius: 999px; font: 700 9px "DM Mono"; letter-spacing: .04em; text-transform: uppercase; }
 .verdict.REPRODUCED { background: var(--lime); }
 .verdict.PARTIAL { background: var(--amber); }
@@ -19,4 +23,5 @@
   .evidence-head { display: none; }
   .claim-row { grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
   .claim-copy { grid-column: 1 / -1; }
+  .claim-detail { display: grid; }
 }

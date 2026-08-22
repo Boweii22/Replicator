@@ -79,17 +79,30 @@ async function loadArchive() {
   $("archive-count").textContent = `${runs.length} RUN${runs.length === 1 ? "" : "S"}`;
   $("archive-list").replaceChildren();
   if (!runs.length) return $("archive-list").append(emptyMessage("No missions yet."));
-  runs.forEach((run) => {
+  const outcomes = await Promise.all(runs.map(async (run) => {
+    if (run.status !== "reported") return {label: STATE[run.status]?.label || run.status, tone: "system"};
+    const verdictResponse = await fetch(`/replications/${run.id}/verdicts`, {cache: "no-store"});
+    if (!verdictResponse.ok) return {label: "REPORT READY", tone: "system"};
+    const verdicts = await verdictResponse.json();
+    if (!verdicts.length || verdicts.every((verdict) => verdict.status === "NOT_ATTEMPTED")) return {label: "NOT RUN", tone: "skipped"};
+    const reproduced = verdicts.filter((verdict) => verdict.status === "REPRODUCED").length;
+    return {label: `${reproduced} OF ${verdicts.length} REPRODUCED`, tone: reproduced ? "reproduced" : "failed"};
+  }));
+  runs.forEach((run, index) => {
     const row = document.createElement("a");
     row.className = "catalog-row";
     row.href = `/?run=${run.id}`;
-    const title = document.createElement("b");
-    title.textContent = run.title || run.source_url;
+    const identity = document.createElement("div"); identity.className = "run-identity";
+    const title = document.createElement("b"); title.textContent = run.title || run.source_url;
+    const detail = document.createElement("small");
+    detail.textContent = `${new Date(run.created_at).toLocaleDateString([], {day: "numeric", month: "short", year: "numeric"})} · RUN ${run.id.slice(0, 8).toUpperCase()}`;
+    identity.append(title, detail);
     const status = document.createElement("em");
-    status.textContent = (STATE[run.status]?.label || run.status).replace("ANALYSIS COMPLETE", "COMPLETE");
+    status.textContent = outcomes[index].label;
+    status.dataset.tone = outcomes[index].tone;
     const spend = document.createElement("span");
-    spend.textContent = `$${run.spent.usd.toFixed(2)} · ${run.spent.job_minutes.toFixed(1)} job min`;
-    row.append(title, status, spend);
+    spend.textContent = `$${run.spent.usd.toFixed(2)} accounted · ${run.spent.job_minutes.toFixed(1)} job min`;
+    row.append(identity, status, spend);
     $("archive-list").appendChild(row);
   });
 }
@@ -102,14 +115,22 @@ async function loadMemory() {
   $("memory-list").replaceChildren();
   if (!lessons.length) return $("memory-list").append(emptyMessage("No autonomous repairs learned yet."));
   lessons.forEach((lesson) => {
-    const row = document.createElement("div");
-    row.className = "catalog-row memory";
-    const key = document.createElement("b"); key.textContent = lesson.key;
+    const row = document.createElement("div"); row.className = "catalog-row memory";
+    const identity = document.createElement("div"); identity.className = "memory-identity";
+    const key = document.createElement("b"); key.textContent = humanMemoryKey(lesson.key);
+    const origin = document.createElement("a"); origin.href = `/?run=${lesson.origin_replication_id}`; origin.textContent = `Origin run ${lesson.origin_replication_id.slice(0, 8).toUpperCase()} ↗`;
+    identity.append(key, origin);
     const copy = document.createElement("span"); copy.textContent = lesson.lesson;
-    const uses = document.createElement("em"); uses.textContent = `REUSED ${lesson.times_used}×`;
-    row.append(key, copy, uses);
+    const uses = document.createElement("em"); uses.textContent = lesson.times_used ? `REUSED ${lesson.times_used}×` : "NOT REUSED YET";
+    uses.dataset.tone = lesson.times_used ? "reproduced" : "skipped";
+    row.append(identity, copy, uses);
     $("memory-list").appendChild(row);
   });
+}
+
+function humanMemoryKey(key) {
+  const signature = key.split(":").slice(1).join(":");
+  return signature.replace(/^unclassified-/, "Runtime failure · ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function emptyMessage(text) {
@@ -270,7 +291,18 @@ async function refreshEvidence(id) {
     const chip = document.createElement("strong");
     chip.className = `verdict ${verdict?.status || "PENDING"}`;
     chip.textContent = humanVerdict(verdict?.status);
-    row.append(claimCell, reported, obtained, chip);
+    const detail = document.createElement("div"); detail.className = "claim-detail";
+    const reasoning = document.createElement("p"); reasoning.textContent = verdict?.reasoning || "No completed attempt produced evidence.";
+    const artifacts = document.createElement("div"); artifacts.className = "claim-artifacts";
+    (verdict?.evidence_links || []).forEach((uri, index) => {
+      const link = document.createElement("a");
+      link.href = `/replications/${id}/artifact?uri=${encodeURIComponent(uri)}`;
+      link.target = "_blank";
+      link.textContent = `Evidence ${index + 1} ↗`;
+      artifacts.appendChild(link);
+    });
+    detail.append(reasoning, artifacts);
+    row.append(claimCell, reported, obtained, chip, detail);
     $("claim-rows").appendChild(row);
   });
   const attempted = verdicts.filter((verdict) => verdict.status !== "NOT_ATTEMPTED").length;
