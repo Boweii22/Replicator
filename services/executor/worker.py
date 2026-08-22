@@ -266,8 +266,11 @@ class ExecutorWorker:
                 Verdict(
                     claim_id=claim.id,
                     attempt_id=attempt.id,
-                    status=VerdictStatus.FAILED,
-                    reasoning=f"All {len(attempts)} attempts failed. Last error: {signature}.",
+                    status=VerdictStatus.NOT_ATTEMPTED,
+                    reasoning=(
+                        f"Execution failed before measurement after {len(attempts)} attempts. "
+                        f"Last error: {signature}."
+                    ),
                     evidence_links=[
                         uri for uri in (attempt.code_gcs_uri, attempt.stdout_gcs_uri) if uri
                     ],

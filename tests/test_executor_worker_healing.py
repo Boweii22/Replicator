@@ -93,7 +93,9 @@ async def _scenario() -> None:
     await bus.drain()
     assert len(await state.list_attempts(plan.id)) == 2
     assert len(state.memories) == 1
-    assert (await state.list_verdicts(replication.id))[0].status == "FAILED"
+    verdict = (await state.list_verdicts(replication.id))[0]
+    assert verdict.status == "NOT_ATTEMPTED"
+    assert "Execution failed before measurement" in verdict.reasoning
     assert len(reports) == 1
 
 

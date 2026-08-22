@@ -84,8 +84,9 @@ async function loadArchive() {
     const verdictResponse = await fetch(`/replications/${run.id}/verdicts`, {cache: "no-store"});
     if (!verdictResponse.ok) return {label: "REPORT READY", tone: "system"};
     const verdicts = await verdictResponse.json();
-    if (!verdicts.length || verdicts.every((verdict) => verdict.status === "NOT_ATTEMPTED")) return {label: "NOT RUN", tone: "skipped"};
-    const reproduced = verdicts.filter((verdict) => verdict.status === "REPRODUCED").length;
+    if (verdicts.length && verdicts.every(isExecutionFailureVerdict)) return {label: "EXECUTION FAILED", tone: "failed"};
+    if (!verdicts.length || verdicts.every((verdict) => effectiveVerdictStatus(verdict) === "NOT_ATTEMPTED")) return {label: "NOT RUN", tone: "skipped"};
+    const reproduced = verdicts.filter((verdict) => effectiveVerdictStatus(verdict) === "REPRODUCED").length;
     return {label: `${reproduced} OF ${verdicts.length} REPRODUCED`, tone: reproduced ? "reproduced" : "failed"};
   }));
   runs.forEach((run, index) => {
@@ -235,16 +236,21 @@ async function refreshRunState(id) {
 function renderRunState(run) {
   const state = STATE[run.status] || STATE.queued;
   const noAttempt = isNoAttempt(run, activeEvidence.verdicts);
+  const executionFailure = isExecutionFailure(activeEvidence.verdicts);
   $("mission-paper").textContent = run.title || "Preparing paper…";
   $("mission-id").textContent = `RUN ${run.id.slice(0, 8).toUpperCase()} · ${new URL(run.source_url).hostname}`;
   $("mission-status").textContent = state.label;
   $("mission-status").className = `status-pill ${["reported", "failed_system"].includes(run.status) ? "terminal" : ""}`;
   $("state-kicker").textContent = state.kicker;
-  $("state-title").textContent = noAttempt ? "Analysis complete — experiment skipped" : state.title;
-  $("state-copy").textContent = noAttempt
+  $("state-title").textContent = executionFailure ? "Execution failed before measurement" : noAttempt ? "Analysis complete — experiment skipped" : state.title;
+  $("state-copy").textContent = executionFailure
+    ? "Replicator built the experiment and exhausted every repair attempt, but no runnable job produced a measurement. No scientific verdict was assigned."
+    : noAttempt
     ? "Replicator extracted the claims, then stopped honestly because it could not dispatch a defensible experiment within the mission constraints."
     : state.copy;
-  $("next-action").textContent = noAttempt
+  $("next-action").textContent = executionFailure
+    ? "Inspect the last error and evidence artifacts below. This is a system result—not evidence against the paper."
+    : noAttempt
     ? "Review the reason below. Increase the guardrails or choose a paper with a smaller reproducible experiment before retrying."
     : state.next;
   $("progress-percent").textContent = `${state.progress}%`;
@@ -254,18 +260,21 @@ function renderRunState(run) {
   $("runtime").textContent = `${run.spent.job_minutes.toFixed(1)} / ${run.budget.max_job_minutes.toFixed(0)} min`;
   $("attempt-count").textContent = `${attemptIds.size} / ${run.budget.max_attempts}`;
   $("state-icon").className = `state-icon ${run.status === "failed_system" || noAttempt ? "warning" : run.status === "reported" ? "complete" : ""}`;
-  renderStages(run.status, noAttempt);
+  renderStages(run.status, noAttempt, executionFailure);
   if (["reported", "failed_system"].includes(run.status)) renderOutcome(run, activeEvidence.verdicts);
 }
 
-function renderStages(status, noAttempt) {
+function renderStages(status, noAttempt, executionFailure) {
   const current = STAGES.indexOf(status);
   document.querySelectorAll(".stage").forEach((stage, index) => {
     let mode = index < current ? "complete" : index === current ? "current" : "waiting";
     if (status === "reported") mode = "complete";
     if (noAttempt && [2, 3, 4].includes(index)) mode = "skipped";
+    if (executionFailure && index === 2) mode = "complete";
+    if (executionFailure && index === 3) mode = "failed";
+    if (executionFailure && index === 4) mode = "skipped";
     stage.className = `stage ${mode}`;
-    stage.querySelector("em").textContent = ({complete: "Done", current: "In progress", waiting: "Waiting", skipped: "Skipped"})[mode];
+    stage.querySelector("em").textContent = ({complete: "Done", current: "In progress", waiting: "Waiting", skipped: "Skipped", failed: "Failed"})[mode];
   });
 }
 
@@ -289,8 +298,9 @@ async function refreshEvidence(id) {
     const reported = document.createElement("span"); reported.textContent = formatValue(claim.reported_value, claim.unit);
     const obtained = document.createElement("span"); obtained.textContent = formatValue(verdict?.obtained_value, claim.unit);
     const chip = document.createElement("strong");
-    chip.className = `verdict ${verdict?.status || "PENDING"}`;
-    chip.textContent = humanVerdict(verdict?.status);
+    const effectiveStatus = verdict ? effectiveVerdictStatus(verdict) : "PENDING";
+    chip.className = `verdict ${effectiveStatus}`;
+    chip.textContent = humanVerdict(effectiveStatus);
     const detail = document.createElement("div"); detail.className = "claim-detail";
     const reasoning = document.createElement("p"); reasoning.textContent = verdict?.reasoning || "No completed attempt produced evidence.";
     const artifacts = document.createElement("div"); artifacts.className = "claim-artifacts";
@@ -305,16 +315,17 @@ async function refreshEvidence(id) {
     row.append(claimCell, reported, obtained, chip, detail);
     $("claim-rows").appendChild(row);
   });
-  const attempted = verdicts.filter((verdict) => verdict.status !== "NOT_ATTEMPTED").length;
+  const attempted = verdicts.filter((verdict) => effectiveVerdictStatus(verdict) !== "NOT_ATTEMPTED").length;
   $("ledger-summary").textContent = attempted ? `${attempted} OF ${claims.length} CLAIMS TESTED` : `${claims.length} CLAIMS FOUND · NONE TESTED`;
   $("evidence").classList.remove("hidden");
 }
 
 function renderOutcome(run, verdicts) {
-  const reproduced = verdicts.filter((v) => v.status === "REPRODUCED").length;
-  const failed = verdicts.filter((v) => ["FAILED", "PARTIAL"].includes(v.status)).length;
-  const skipped = verdicts.filter((v) => v.status === "NOT_ATTEMPTED").length;
+  const reproduced = verdicts.filter((v) => effectiveVerdictStatus(v) === "REPRODUCED").length;
+  const failed = verdicts.filter((v) => ["FAILED", "PARTIAL"].includes(effectiveVerdictStatus(v))).length;
+  const skipped = verdicts.filter((v) => effectiveVerdictStatus(v) === "NOT_ATTEMPTED").length;
   const noAttempt = isNoAttempt(run, verdicts);
+  const executionFailure = isExecutionFailure(verdicts);
   $("stat-reproduced").textContent = reproduced;
   $("stat-failed").textContent = failed;
   $("stat-skipped").textContent = skipped;
@@ -324,6 +335,12 @@ function renderOutcome(run, verdicts) {
     $("outcome-kicker").textContent = "STOPPED SAFELY";
     $("outcome-title").textContent = "The system could not finish this mission.";
     $("outcome-summary").textContent = run.summary_verdict || "The available diagnostic evidence was preserved. No result has been invented.";
+  } else if (executionFailure) {
+    const reason = verdicts.find((v) => v.reasoning)?.reasoning;
+    $("outcome-mark").textContent = "!";
+    $("outcome-kicker").textContent = "SYSTEM RESULT";
+    $("outcome-title").textContent = "Execution failed before measurement.";
+    $("outcome-summary").textContent = `${reason || "Every autonomous repair attempt failed."} This is not evidence against the paper.`;
   } else if (noAttempt) {
     const reason = verdicts.find((v) => v.reasoning)?.reasoning;
     $("outcome-mark").textContent = "↷";
@@ -342,7 +359,19 @@ function renderOutcome(run, verdicts) {
 }
 
 function isNoAttempt(run, verdicts) {
-  return run.status === "reported" && verdicts.length > 0 && verdicts.every((verdict) => verdict.status === "NOT_ATTEMPTED") && attemptIds.size === 0;
+  return run.status === "reported" && verdicts.length > 0 && verdicts.every((verdict) => effectiveVerdictStatus(verdict) === "NOT_ATTEMPTED");
+}
+
+function isExecutionFailureVerdict(verdict) {
+  return verdict.obtained_value === null && /(?:all \d+ attempts failed|execution failed before measurement)/i.test(verdict.reasoning || "");
+}
+
+function isExecutionFailure(verdicts) {
+  return verdicts.length > 0 && verdicts.every(isExecutionFailureVerdict);
+}
+
+function effectiveVerdictStatus(verdict) {
+  return isExecutionFailureVerdict(verdict) ? "NOT_ATTEMPTED" : verdict.status;
 }
 
 function formatElapsed(run) {

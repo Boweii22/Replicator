@@ -160,6 +160,9 @@ input[type="range"] { width: 100%; margin-top: 18px; accent-color: var(--blue); 
 .stage.skipped { background: #d9d5cc; opacity: .65; }
 .stage.skipped i { text-decoration: line-through; }
 .stage.skipped em { color: #8b4e00; }
+.stage.failed { color: white; background: var(--red); box-shadow: 3px 3px 0 var(--ink); }
+.stage.failed i { color: white; background: var(--ink); }
+.stage.failed small, .stage.failed em { color: white; }
 
 .mission-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, .8fr); border-top: 2px solid var(--ink); }
 .activity-card { min-width: 0; border-right: 2px solid var(--ink); }

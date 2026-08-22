@@ -14,14 +14,27 @@ def _artifact_link(replication_id: str, uri: str, index: int) -> str:
     return f'<a class="artifact-link" href="{href}" target="_blank">{kind} {index} <span>↗</span></a>'
 
 
+def _is_execution_failure(verdict: Verdict) -> bool:
+    reasoning = verdict.reasoning.lower()
+    return verdict.obtained_value is None and (
+        ("all " in reasoning and " attempts failed" in reasoning)
+        or "execution failed before measurement" in reasoning
+    )
+
+
+def _effective_status(verdict: Verdict) -> VerdictStatus:
+    return VerdictStatus.NOT_ATTEMPTED if _is_execution_failure(verdict) else verdict.status
+
+
 def render_report(replication: Replication, claims: list[Claim], verdicts: list[Verdict]) -> str:
     by_claim = {verdict.claim_id: verdict for verdict in verdicts}
     counts = {status.value: 0 for status in VerdictStatus}
     for verdict in verdicts:
-        counts[verdict.status.value] += 1
+        counts[_effective_status(verdict).value] += 1
+    execution_failed = bool(verdicts) and all(_is_execution_failure(verdict) for verdict in verdicts)
     tested = counts["REPRODUCED"] + counts["PARTIAL"] + counts["FAILED"]
     reproduced = counts["REPRODUCED"]
-    headline = (
+    headline = "Execution failed before measurement." if execution_failed else (
         f"{reproduced} of {tested} tested claims reproduced."
         if tested
         else "No claims were experimentally tested."
@@ -30,7 +43,7 @@ def render_report(replication: Replication, claims: list[Claim], verdicts: list[
     figure_sections: list[str] = []
     for claim in sorted(claims, key=lambda item: item.index):
         verdict = by_claim.get(claim.id)
-        status = verdict.status.value if verdict else VerdictStatus.NOT_ATTEMPTED.value
+        status = _effective_status(verdict).value if verdict else VerdictStatus.NOT_ATTEMPTED.value
         obtained = "—" if not verdict or verdict.obtained_value is None else f"{verdict.obtained_value:g}"
         reported = "—" if claim.reported_value is None else f"{claim.reported_value:g}"
         unit = html.escape(claim.unit or "")
