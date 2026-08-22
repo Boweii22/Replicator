@@ -86,7 +86,11 @@ async function loadArchive() {
     if (!verdictResponse.ok) return {label: "REPORT READY", tone: "system"};
     const verdicts = await verdictResponse.json();
     if (verdicts.length && verdicts.every(isExecutionFailureVerdict)) return {label: "EXECUTION FAILED", tone: "failed"};
-    if (!verdicts.length || verdicts.every((verdict) => verdict.status === "NOT_ATTEMPTED")) return {label: "NOT RUN", tone: "skipped"};
+    if (!verdicts.length || verdicts.every((verdict) => verdict.status === "NOT_ATTEMPTED")) {
+      return run.spent.job_minutes > 0
+        ? {label: "NO COMPARABLE EVIDENCE", tone: "skipped"}
+        : {label: "NOT RUN", tone: "skipped"};
+    }
     const reproduced = verdicts.filter((verdict) => verdict.status === "REPRODUCED").length;
     return {label: `${reproduced} OF ${verdicts.length} REPRODUCED`, tone: reproduced ? "reproduced" : "failed"};
   }));
@@ -237,19 +241,22 @@ async function refreshRunState(id) {
 function renderRunState(run) {
   const state = STATE[run.status] || STATE.queued;
   const noAttempt = !evidenceContractError && isNoAttempt(run, activeEvidence.verdicts);
+  const noComparableEvidence = isNoComparableEvidence(run, activeEvidence.verdicts);
   const executionFailure = isExecutionFailure(activeEvidence.verdicts);
   $("mission-paper").textContent = run.title || "Preparing paper…";
   $("mission-id").textContent = `RUN ${run.id.slice(0, 8).toUpperCase()} · ${new URL(run.source_url).hostname}`;
   $("mission-status").textContent = state.label;
   $("mission-status").className = `status-pill ${["reported", "failed_system"].includes(run.status) ? "terminal" : ""}`;
   $("state-kicker").textContent = state.kicker;
-  $("state-title").textContent = evidenceContractError ? "Analysis complete — evidence rejected" : executionFailure ? "Execution failed before measurement" : noAttempt ? "Analysis complete — experiment skipped" : state.title;
+  $("state-title").textContent = evidenceContractError ? "Analysis complete — evidence rejected" : executionFailure ? "Execution failed before measurement" : noAttempt ? "Analysis complete — experiment skipped" : noComparableEvidence ? "Analysis complete — no comparable claims" : state.title;
   $("state-copy").textContent = evidenceContractError
     ? "The job ran, but its measurements violated their typed claim contract. Replicator invalidated the result instead of blaming the paper."
     : executionFailure
     ? "Replicator built the experiment and exhausted every repair attempt, but no runnable job produced a measurement. No scientific verdict was assigned."
     : noAttempt
     ? "Replicator extracted the claims, then stopped honestly because it could not dispatch a defensible experiment within the mission constraints."
+    : noComparableEvidence
+    ? "The cloud experiment completed and produced an artifact, but none of its measurements matched the paper claims' required datasets and protocols."
     : state.copy;
   $("next-action").textContent = evidenceContractError
     ? "Do not use these verdicts. Start a new run; new experiments now receive stricter claim-to-measurement bindings."
@@ -257,6 +264,8 @@ function renderRunState(run) {
     ? "Inspect the last error and evidence artifacts below. This is a system result—not evidence against the paper."
     : noAttempt
     ? "Review the reason below. Increase the guardrails or choose a paper with a smaller reproducible experiment before retrying."
+    : noComparableEvidence
+    ? "The run itself worked. Choose a paper with accessible official datasets, or inspect the ledger to see why each claim was excluded."
     : state.next;
   $("progress-percent").textContent = `${state.progress}%`;
   $("progress-fill").style.width = `${state.progress}%`;
@@ -337,11 +346,12 @@ function renderOutcome(run, verdicts) {
   const failed = verdicts.filter((v) => ["FAILED", "PARTIAL"].includes(effectiveVerdictStatus(v))).length;
   const skipped = verdicts.filter((v) => effectiveVerdictStatus(v) === "NOT_ATTEMPTED").length;
   const noAttempt = isNoAttempt(run, verdicts);
+  const noComparableEvidence = isNoComparableEvidence(run, verdicts);
   const executionFailure = isExecutionFailure(verdicts);
   $("stat-reproduced").textContent = reproduced;
   $("stat-failed").textContent = failed;
   $("stat-skipped").textContent = skipped;
-  $("outcome").classList.toggle("warning", noAttempt || run.status === "failed_system");
+  $("outcome").classList.toggle("warning", noAttempt || noComparableEvidence || run.status === "failed_system");
   if (evidenceContractError) {
     $("outcome-mark").textContent = "!";
     $("outcome-kicker").textContent = "EVIDENCE REJECTED";
@@ -364,6 +374,11 @@ function renderOutcome(run, verdicts) {
     $("outcome-kicker").textContent = "COMPLETED SAFELY";
     $("outcome-title").textContent = "The experiment was not run.";
     $("outcome-summary").textContent = `${reason || run.summary_verdict || "No defensible experiment could be dispatched within the mission constraints."} No reproduction verdict was claimed.`;
+  } else if (noComparableEvidence) {
+    $("outcome-mark").textContent = "?";
+    $("outcome-kicker").textContent = "RUN COMPLETED SAFELY";
+    $("outcome-title").textContent = "The experiment ran; no paper claims were comparable.";
+    $("outcome-summary").textContent = "The cloud job produced evidence, but the Verifier rejected every measurement as unavailable or protocol-mismatched. This is not evidence against the paper.";
   } else {
     $("outcome-mark").textContent = reproduced ? "✓" : "≠";
     $("outcome-kicker").textContent = "MISSION COMPLETE";
@@ -376,7 +391,18 @@ function renderOutcome(run, verdicts) {
 }
 
 function isNoAttempt(run, verdicts) {
-  return run.status === "reported" && verdicts.length > 0 && verdicts.every((verdict) => effectiveVerdictStatus(verdict) === "NOT_ATTEMPTED");
+  return run.status === "reported"
+    && run.spent.job_minutes === 0
+    && attemptIds.size === 0
+    && verdicts.length > 0
+    && verdicts.every((verdict) => effectiveVerdictStatus(verdict) === "NOT_ATTEMPTED");
+}
+
+function isNoComparableEvidence(run, verdicts) {
+  return run.status === "reported"
+    && (run.spent.job_minutes > 0 || attemptIds.size > 0)
+    && verdicts.length > 0
+    && verdicts.every((verdict) => effectiveVerdictStatus(verdict) === "NOT_ATTEMPTED");
 }
 
 function isExecutionFailureVerdict(verdict) {

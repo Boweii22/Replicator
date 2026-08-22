@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from services.api.main import app
@@ -8,6 +10,12 @@ def test_mission_control_is_served() -> None:
         response = client.get("/")
         assert response.status_code == 200
         assert "Evidence, not vibes" in response.text
+
+
+def test_mission_control_distinguishes_completed_noncomparable_run() -> None:
+    script = (Path(__file__).parents[1] / "apps" / "web" / "app.js").read_text()
+    assert "The experiment ran; no paper claims were comparable." in script
+    assert "isNoComparableEvidence" in script
 
 
 def test_create_get_and_budget_contract() -> None:
