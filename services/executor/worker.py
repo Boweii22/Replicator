@@ -278,7 +278,7 @@ class ExecutorWorker:
             if "coil-20" in diagnostic_log.lower() or "coil20" in diagnostic_log.lower():
                 plan.risks.append(
                     "COIL-20 SOURCE REPAIR: the legacy ZIP URLs are dead. Use "
-                    "sklearn.datasets.fetch_openml(data_id=40996, parser='auto') and record "
+                    "sklearn.datasets.fetch_openml(data_id=46783, parser='auto') and record "
                     "OpenML provenance, or omit COIL-20 claims if unavailable."
                 )
         await self.state.put_plan(plan)

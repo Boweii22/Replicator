@@ -105,6 +105,26 @@ def test_smoke_benchmark_cannot_claim_109_dataset_result() -> None:
     assert "requires 109 datasets" in measurement_semantic_error(claim, measurement)
 
 
+def test_openml_registry_rejects_relabelled_fashion_mnist_as_coil() -> None:
+    _, claim, _ = fixture()
+    claim.text = "UMAP accuracy is 0.921 on the COIL-20 dataset."
+    claim.metric_name = "accuracy"
+    claim.reported_value = 0.921
+    claim.unit = None
+    measurement = Measurement(
+        value=0.77,
+        metric_name="accuracy",
+        unit="",
+        data_source="https://www.openml.org/d/40996",
+        dataset_names=["COIL-20"],
+        dataset_count=1,
+        sample_count=70000,
+        protocol="10-fold cross-validation",
+    )
+    error = measurement_semantic_error(claim, measurement)
+    assert error and "fashionmnist" in error
+
+
 def test_badge_counts() -> None:
     assert "3/4 claims reproduced" in render_badge(3, 4)
 

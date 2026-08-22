@@ -6,6 +6,11 @@ from services.verifier.metrics import Measurement
 
 
 BOUNDED_METRIC_WORDS = ("accuracy", "precision", "recall", "f1", "auc", "proportion")
+OPENML_DATASET_NAMES = {
+    "40996": "fashionmnist",
+    "40979": "mfeatpixel",
+    "46783": "coil20",
+}
 
 
 def _measurement(item: Measurement | float) -> Measurement:
@@ -88,6 +93,15 @@ def measurement_semantic_error(claim: Claim, measurement: Measurement) -> str | 
         return f"metric {measurement.metric_name!r} does not match {claim.metric_name!r}"
     if _normal(claim.unit) != _normal(measurement.unit):
         return f"unit {measurement.unit!r} does not match {claim.unit or ''!r}"
+    openml_match = re.search(r"openml\.org/(?:d/|data/)?(\d+)", measurement.data_source.lower())
+    if openml_match and openml_match.group(1) in OPENML_DATASET_NAMES:
+        canonical = OPENML_DATASET_NAMES[openml_match.group(1)]
+        declared = {_normal(name) for name in measurement.dataset_names}
+        if canonical not in declared:
+            return (
+                f"OpenML dataset {openml_match.group(1)} is {canonical!r}, but the artifact "
+                f"declares {measurement.dataset_names!r}"
+            )
     text = claim.text.lower()
     count_match = re.search(r"(?:all(?:\s+of)?|over)\s+(\d+)\s+(?:ucr\s+)?datasets", text)
     if count_match and measurement.dataset_count < int(count_match.group(1)):

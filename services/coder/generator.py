@@ -58,7 +58,7 @@ dataset cannot be sourced. Parameter/configuration claims may be tested on deter
 input when the input does not affect the claimed configuration value. For sktime,
 `MiniRocketClassifier` is not exported; use `RocketClassifier(rocket_transform="minirocket")`, or
 the supported MiniRocket transformer plus a classifier, with an API-compatible pinned version.
-For COIL-20, use `sklearn.datasets.fetch_openml(data_id=40996, parser="auto")`; the legacy
+For COIL-20, use `sklearn.datasets.fetch_openml(data_id=46783, parser="auto")`; the legacy
 `coil-20-proc.zip` GitHub and Columbia CAVE URLs are dead. If OpenML is unavailable, omit the claim.
 """
         validation_error = ""
@@ -115,7 +115,11 @@ def validate_generated_source(run_py: str) -> None:
     lowered = run_py.lower()
     if "coil-20-proc.zip" in lowered or "slam_uploads/coil-20" in lowered:
         raise ValueError(
-            "run.py uses dead COIL-20 ZIP URLs; use OpenML data_id=40996 or omit the claim"
+            "run.py uses dead COIL-20 ZIP URLs; use OpenML data_id=46783 or omit the claim"
+        )
+    if "coil" in lowered and re.search(r"data_id\s*=\s*(?:40996|40979)\b", lowered):
+        raise ValueError(
+            "run.py misidentifies an OpenML dataset as COIL-20; use data_id=46783"
         )
 
 

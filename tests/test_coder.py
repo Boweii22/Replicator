@@ -49,3 +49,14 @@ def test_generated_source_gate_rejects_syntax_errors_and_unreliable_host() -> No
             raise AssertionError("unsafe source should be rejected")
         except ValueError:
             pass
+
+
+def test_generated_source_gate_rejects_mislabeled_coil_openml_ids() -> None:
+    for dataset_id in (40996, 40979):
+        source = f"# COIL-20\nfetch_openml(data_id={dataset_id})"
+        try:
+            validate_generated_source(source)
+            raise AssertionError("wrong COIL-20 dataset ID should be rejected")
+        except ValueError:
+            pass
+    validate_generated_source("# COIL-20\nfetch_openml(data_id=46783)")
