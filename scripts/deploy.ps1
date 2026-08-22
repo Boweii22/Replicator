@@ -27,10 +27,23 @@ Invoke-Checked $Gcloud @("config", "set", "project", $ProjectId)
 Invoke-Checked $Gcloud @("services", "enable", "cloudbuild.googleapis.com",
   "artifactregistry.googleapis.com", "run.googleapis.com")
 Invoke-Checked $Terraform @("-chdir=infra", "init", "-input=false")
-$Workspace = $ProjectId -replace '[^a-zA-Z0-9_-]', '-'
-& $Terraform @("-chdir=infra", "workspace", "select", $Workspace)
-if ($LASTEXITCODE -ne 0) {
-  Invoke-Checked $Terraform @("-chdir=infra", "workspace", "new", $Workspace)
+$ProjectWorkspace = $ProjectId -replace '[^a-zA-Z0-9_-]', '-'
+# Older deployments used Terraform's default workspace. Reuse it when it owns
+# the API service instead of selecting a new workspace and trying to recreate
+# live infrastructure that is absent from that new state.
+Invoke-Checked $Terraform @("-chdir=infra", "workspace", "select", "default")
+$DefaultResources = & $Terraform @("-chdir=infra", "state", "list")
+if ($LASTEXITCODE -ne 0) { throw "Terraform state inspection failed with exit code $LASTEXITCODE" }
+$Workspace = if ($DefaultResources -contains "google_cloud_run_v2_service.api") {
+  "default"
+} else {
+  $ProjectWorkspace
+}
+if ($Workspace -ne "default") {
+  & $Terraform @("-chdir=infra", "workspace", "select", $Workspace)
+  if ($LASTEXITCODE -ne 0) {
+    Invoke-Checked $Terraform @("-chdir=infra", "workspace", "new", $Workspace)
+  }
 }
 Invoke-Checked $Terraform @("-chdir=infra", "apply", "-auto-approve",
   "-target=google_project_service.apis",
