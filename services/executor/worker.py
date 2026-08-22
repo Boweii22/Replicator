@@ -224,6 +224,8 @@ class ExecutorWorker:
             f"{attempt.id}/out/stderr.log"
         )
         try:
+            if not self.artifacts.bucket:
+                raise FileNotFoundError("Cloud logs are unavailable in local artifact mode")
             stderr = self.artifacts.get_bytes(stderr_uri).decode("utf-8", errors="replace")
             attempt.stdout_gcs_uri = (
                 f"gs://{os.environ['ARTIFACT_BUCKET']}/{replication.id}/"

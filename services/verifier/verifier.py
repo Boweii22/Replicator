@@ -1,9 +1,14 @@
 import re
 
-from packages.schemas.models import Attempt, Claim, Verdict, VerdictStatus, VisionAssessment
+from packages.schemas.models import (
+    Attempt,
+    Claim,
+    Verdict,
+    VerdictStatus,
+    VisionAssessment,
+)
 from packages.science import numeric_verdict
 from services.verifier.metrics import Measurement
-
 
 BOUNDED_METRIC_WORDS = ("accuracy", "precision", "recall", "f1", "auc", "proportion")
 OPENML_DATASET_NAMES = {
