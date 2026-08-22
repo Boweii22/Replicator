@@ -73,6 +73,11 @@ def test_dataset_failures_share_one_actionable_signature(stderr: str) -> None:
     assert extract_error_signature(stderr) == "dataset-source-unavailable"
 
 
+def test_sktime_minirocket_import_failure_is_actionable() -> None:
+    stderr = "ImportError: cannot import name 'MiniRocketClassifier' from 'sktime'"
+    assert extract_error_signature(stderr) == "unsupported-sktime-minirocketclassifier-api"
+
+
 class FailThenPassRunner:
     calls = 0
 

@@ -55,7 +55,9 @@ HTML and missing archives. Prefer data committed in an official repository or pa
 fixtures. Dataset shorthands such as Fruit, Mosquito, and Insect are not valid archive identifiers
 (the paper may mean FruitFlies, MosquitoSound, or InsectSound); do not guess. Omit claims whose exact
 dataset cannot be sourced. Parameter/configuration claims may be tested on deterministic generated
-input when the input does not affect the claimed configuration value.
+input when the input does not affect the claimed configuration value. For sktime,
+`MiniRocketClassifier` is not exported; use `RocketClassifier(rocket_transform="minirocket")`, or
+the supported MiniRocket transformer plus a classifier, with an API-compatible pinned version.
 """
         validation_error = ""
         for _ in range(3):
@@ -102,6 +104,11 @@ def validate_generated_source(run_py: str) -> None:
         raise ValueError(
             "run.py uses a network-backed UCR/UEA loader with an unavailable upstream; "
             "use an official pinned source, package-bundled data, or omit dependent claims"
+        )
+    if re.search(r"\bMiniRocketClassifier\b", run_py):
+        raise ValueError(
+            "run.py imports unsupported sktime MiniRocketClassifier; use "
+            "RocketClassifier(rocket_transform='minirocket')"
         )
 
 

@@ -41,6 +41,7 @@ def test_generated_source_gate_rejects_syntax_errors_and_unreliable_host() -> No
         "if True print('broken')",
         "download('timeseriesclassification.com/x.zip')",
         "from sktime.datasets import load_UCR_UEA_dataset\nload_UCR_UEA_dataset('Fruit')",
+        "from sktime.classification.kernel_based import MiniRocketClassifier",
     ):
         try:
             validate_generated_source(source)

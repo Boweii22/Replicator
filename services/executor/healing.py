@@ -18,6 +18,8 @@ def extract_error_signature(stderr: str) -> str:
         or ("httperror" in lowered and "404" in lowered)
     ):
         return "dataset-source-unavailable"
+    if "cannot import name 'minirocketclassifier'" in lowered:
+        return "unsupported-sktime-minirocketclassifier-api"
     normalized = re.sub(r"0x[0-9a-f]+|\d+", "#", stderr.lower())[-2000:]
     digest = hashlib.sha256(normalized.encode()).hexdigest()[:16]
     return f"unclassified-{digest}"
