@@ -388,7 +388,8 @@ function isExecutionFailure(verdicts) {
 }
 
 function effectiveVerdictStatus(verdict) {
-  return evidenceContractError || isExecutionFailureVerdict(verdict) ? "NOT_ATTEMPTED" : verdict.status;
+  const missingFigure = /did not produce the required claim figure|no faithful reproduced figure/i.test(verdict.reasoning || "");
+  return evidenceContractError || isExecutionFailureVerdict(verdict) || missingFigure ? "NOT_ATTEMPTED" : verdict.status;
 }
 
 function findEvidenceContractError(claims, verdicts) {

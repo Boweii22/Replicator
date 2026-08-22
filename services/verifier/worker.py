@@ -88,9 +88,10 @@ class VerifierWorker:
                         Verdict(
                             claim_id=claim.id,
                             attempt_id=attempt.id,
-                            status=VerdictStatus.FAILED,
+                            status=VerdictStatus.NOT_ATTEMPTED,
                             reasoning=(
-                                "The successful job did not produce the required claim figure."
+                                "The job completed, but no faithful reproduced figure was available "
+                                "for this claim. Absence of a figure is not evidence against the paper."
                             ),
                             evidence_links=[attempt.metrics_gcs_uri],
                         )
