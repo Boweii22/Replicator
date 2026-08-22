@@ -10,6 +10,14 @@ def extract_error_signature(stderr: str) -> str:
     match = SIGNATURE.search(stderr)
     if match:
         return match.group(1).strip()[:240]
+    lowered = stderr.lower()
+    if (
+        "invalid dataset name" in lowered
+        or "all download strategies failed" in lowered
+        or "file is not a zip file" in lowered
+        or ("httperror" in lowered and "404" in lowered)
+    ):
+        return "dataset-source-unavailable"
     normalized = re.sub(r"0x[0-9a-f]+|\d+", "#", stderr.lower())[-2000:]
     digest = hashlib.sha256(normalized.encode()).hexdigest()[:16]
     return f"unclassified-{digest}"

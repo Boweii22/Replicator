@@ -232,6 +232,11 @@ class ExecutorWorker:
         except Exception:
             stderr = str(error)
         signature = extract_error_signature(stderr)
+        if attempt.started_at is not None:
+            elapsed_minutes = max(0.0, (utcnow() - attempt.started_at).total_seconds() / 60)
+            await self.state.add_spend(
+                replication.id, usd=plan.estimated_usd, job_minutes=elapsed_minutes
+            )
         key = memory_key("experiment", signature)
         known = await self.state.get_memory(key)
         if self.repairer is None:
@@ -256,6 +261,13 @@ class ExecutorWorker:
             f"Previous attempt {attempt.n} failed ({signature}): {repaired.diagnosis}. "
             f"Required repair: {repaired.patch_summary}"
         )
+        if signature == "dataset-source-unavailable":
+            plan.risks.append(
+                "HARD REPAIR CONSTRAINT: the prior UCR dataset source is unavailable. Do not "
+                "retry load_UCR_UEA_dataset or timeseriesclassification.com. Use only an official "
+                "pinned/package-bundled source, omit dataset-dependent claim IDs, and preserve any "
+                "independently testable parameter claims."
+            )
         await self.state.put_plan(plan)
         await self.state.append_event(
             Event(

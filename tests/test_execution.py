@@ -60,6 +60,19 @@ def test_error_signature_and_memory_key_are_stable() -> None:
     assert memory_key("Torch", "cuda-out-of-memory") == memory_key("torch", "cuda-out-of-memory")
 
 
+@pytest.mark.parametrize(
+    "stderr",
+    [
+        "urllib.error.HTTPError: HTTP Error 404: Not Found",
+        "ValueError: Invalid dataset name =Fruit is not available",
+        "BadZipFile: File is not a zip file",
+        "RuntimeError: All download strategies failed after 1 retries each",
+    ],
+)
+def test_dataset_failures_share_one_actionable_signature(stderr: str) -> None:
+    assert extract_error_signature(stderr) == "dataset-source-unavailable"
+
+
 class FailThenPassRunner:
     calls = 0
 

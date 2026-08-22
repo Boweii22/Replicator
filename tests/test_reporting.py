@@ -53,6 +53,13 @@ def test_verdict_refuses_missing_artifact() -> None:
         verify_numeric_claim(claim, attempt, {claim.id: 90})
 
 
+def test_missing_metric_is_not_evidence_against_paper() -> None:
+    _, claim, attempt = fixture()
+    verdict = verify_numeric_claim(claim, attempt, {})
+    assert verdict.status == VerdictStatus.NOT_ATTEMPTED
+    assert "not evidence against the paper" in verdict.reasoning.lower()
+
+
 @pytest.mark.parametrize("payload", [b"not-json", b'{"claim": true}'])
 def test_metrics_reject_invalid_evidence(payload: bytes) -> None:
     with pytest.raises(EvidenceError):

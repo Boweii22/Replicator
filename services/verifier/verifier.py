@@ -38,8 +38,11 @@ def verify_numeric_claim(claim: Claim, attempt: Attempt, metrics: dict[str, floa
         return Verdict(
             claim_id=claim.id,
             attempt_id=attempt.id,
-            status=VerdictStatus.FAILED,
-            reasoning="The successful job artifact did not contain this claim ID.",
+            status=VerdictStatus.NOT_ATTEMPTED,
+            reasoning=(
+                "The job completed, but no faithful measurement was available for this claim. "
+                "Absence of a metric is not evidence against the paper."
+            ),
             evidence_links=links,
         )
     obtained = metrics[claim.id]

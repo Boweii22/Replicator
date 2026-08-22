@@ -37,7 +37,11 @@ def test_import_gate_adds_missing_matplotlib_pin() -> None:
 
 def test_generated_source_gate_rejects_syntax_errors_and_unreliable_host() -> None:
     validate_generated_source("print('valid')")
-    for source in ("if True print('broken')", "download('timeseriesclassification.com/x.zip')"):
+    for source in (
+        "if True print('broken')",
+        "download('timeseriesclassification.com/x.zip')",
+        "from sktime.datasets import load_UCR_UEA_dataset\nload_UCR_UEA_dataset('Fruit')",
+    ):
         try:
             validate_generated_source(source)
             raise AssertionError("unsafe source should be rejected")
