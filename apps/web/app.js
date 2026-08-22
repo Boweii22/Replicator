@@ -1,4 +1,6 @@
 const $ = (id) => document.getElementById(id);
+let activeSource;
+let activePoll;
 const fields = [
   ["attempts", "attempts-out", (v) => v],
   ["minutes", "minutes-out", (v) => `${v} min`],
@@ -55,13 +57,8 @@ async function loadMemory() {
 async function showExistingRun(run) {
   $("mission").classList.remove("hidden");
   $("mission-id").textContent = `RUN / ${run.id.toUpperCase()}`;
-  $("mission-status").textContent = run.status.toUpperCase();
   $("open-report").href = `/replications/${run.id}/report`;
-  const stages = ["queued", "reading", "planning", "coding", "running", "verifying", "reported"];
-  const reached = stages.indexOf(run.status);
-  document.querySelectorAll(".stage").forEach((stage, index) => {
-    if (index <= Math.max(0, reached - 1)) stage.classList.add("active");
-  });
+  renderRunState(run);
   $("events").innerHTML = "";
   connect(run.id);
   await refreshEvidence(run.id);
@@ -100,7 +97,10 @@ $("launch-form").addEventListener("submit", async (event) => {
 });
 
 function connect(id) {
+  if (activeSource) activeSource.close();
+  if (activePoll) clearInterval(activePoll);
   const source = new EventSource(`/replications/${id}/events`);
+  activeSource = source;
   const handle = (event) => {
     const item = JSON.parse(event.data);
     if (item.kind === "heartbeat") return;
@@ -110,11 +110,42 @@ function connect(id) {
     row.innerHTML = `<time>${stamp}</time><b>${item.stage.toUpperCase()}</b><span></span>`;
     row.querySelector("span").textContent = item.message;
     $("events").prepend(row);
-    $("mission-status").textContent = item.stage === "api" ? "QUEUED" : "READING";
+    refreshRunState(id);
   };
   source.addEventListener("status", handle);
   source.addEventListener("agent.decision", handle);
-  source.onerror = () => $("mission-status").textContent = "RECONNECTING";
+  source.addEventListener("artifact", handle);
+  source.onerror = () => refreshRunState(id);
+  refreshRunState(id);
+  activePoll = setInterval(() => refreshRunState(id), 3000);
+}
+
+async function refreshRunState(id) {
+  try {
+    const response = await fetch(`/replications/${id}`, {cache: "no-store"});
+    if (!response.ok) return;
+    const run = await response.json();
+    renderRunState(run);
+    await refreshEvidence(id);
+    if (run.status === "reported" || run.status === "failed") {
+      clearInterval(activePoll);
+      activePoll = undefined;
+      activeSource?.close();
+      activeSource = undefined;
+    }
+  } catch (error) {
+    console.error("Mission status refresh failed", error);
+  }
+}
+
+function renderRunState(run) {
+  $("mission-status").textContent = run.status.toUpperCase();
+  $("spend").textContent = `$${run.spent.usd.toFixed(2)} / $${run.budget.max_usd.toFixed(2)}`;
+  $("runtime").textContent = `${run.spent.job_minutes.toFixed(1)} / ${run.budget.max_job_minutes.toFixed(0)} MIN`;
+  const activeStage = {queued: -1, reading: 0, planning: 1, coding: 2, running: 3, verifying: 4, reported: 5, failed: 5}[run.status] ?? -1;
+  document.querySelectorAll(".stage").forEach((stage, index) => {
+    stage.classList.toggle("active", index <= activeStage);
+  });
 }
 
 $("demo-button").addEventListener("click", async () => {
