@@ -3,80 +3,115 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#07100d">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%2307100d'/%3E%3Cpath d='M17 49V15h17c9 0 14 5 14 12 0 6-3 10-9 12l10 10H37l-9-10v10H17zm11-20h6c3 0 4-1 4-3s-1-3-4-3h-6v6z' fill='%23baff35'/%3E%3C/svg%3E">
-  <title>Replicator — Evidence, not vibes.</title>
+  <meta name="theme-color" content="#080b10">
+  <meta name="description" content="Replicator turns research papers into inspectable, evidence-backed replication verdicts.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23080b10'/%3E%3Cpath d='M17 49V15h17c9 0 14 5 14 12 0 6-3 10-9 12l10 10H37l-9-10v10H17zm11-20h6c3 0 4-1 4-3s-1-3-4-3h-6v6z' fill='%23c7ff4a'/%3E%3C/svg%3E">
+  <title>Replicator — Evidence-backed research verification</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/evidence.css">
 </head>
 <body>
-  <div class="noise"></div>
-  <header>
-    <a class="brand" href="/"><span class="mark">R</span><span>REPLICATOR</span><em>LAB 01</em></a>
-    <nav><button class="nav-active" data-view="mission-view">Mission</button><button data-view="archive-view">Archive</button><button data-view="memory-view">Memory</button></nav>
-    <div class="system"><i></i> SYSTEM NOMINAL <span id="clock">00:00:00Z</span></div>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Replicator home"><span class="mark">R</span><span>Replicator</span><em>Research verification</em></a>
+    <nav aria-label="Primary navigation">
+      <button class="nav-active" data-view="mission-view">Workspace</button>
+      <button data-view="archive-view">Runs</button>
+      <button data-view="memory-view">Learnings</button>
+    </nav>
+    <div class="system"><i></i><span>Cloud systems online</span><time id="clock">00:00:00Z</time></div>
   </header>
+
   <main>
     <div id="mission-view" class="view">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">AUTONOMOUS SCIENTIFIC VERIFICATION</p>
-        <h1>Trust the <span>evidence.</span><br>Question the claim.</h1>
-        <p class="lede">Replicator reads a paper, rebuilds its experiment, heals failures, and returns a cryptographically addressable trail from claim to code to result.</p>
-      </div>
-      <div class="radar" aria-hidden="true"><div class="sweep"></div><b>VERIFY</b><small>NO CLAIM WITHOUT ARTIFACT</small></div>
-    </section>
-
-    <section class="launch panel">
-      <div class="panel-title"><span>01</span><div><b>NEW REPLICATION</b><small>ARXIV SOURCE / ZERO HUMAN INTERVENTION</small></div><strong>READY</strong></div>
-      <form id="launch-form">
-        <label class="url"><span>SOURCE</span><input id="source" type="url" required value="https://arxiv.org/abs/1706.03762" aria-label="arXiv URL"><kbd>ARXIV</kbd></label>
-        <div class="budgets">
-          <label><span>ATTEMPTS <output id="attempts-out">3</output></span><input id="attempts" type="range" min="1" max="8" value="3"></label>
-          <label><span>TIME CAP <output id="minutes-out">20 min</output></span><input id="minutes" type="range" min="5" max="120" step="5" value="20"></label>
-          <label><span>COST CAP <output id="cost-out">$1.00</output></span><input id="cost" type="range" min="0.25" max="10" step="0.25" value="1"></label>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span>01</span> Autonomous scientific verification</p>
+          <h1>From research claim<br>to <em>runnable evidence.</em></h1>
+          <p class="lede">Give Replicator an arXiv paper. It extracts measurable claims, builds a bounded experiment, runs it in an isolated cloud job, and shows exactly what held up.</p>
+          <div class="hero-proof"><span><b>6</b> specialist agents</span><span><b>1</b> signed evidence trail</span><span><b>0</b> invented results</span></div>
         </div>
-        <button class="launch-button" type="submit"><span>BEGIN AUTONOMOUS RUN</span><i>→</i></button>
-        <button id="demo-button" class="demo-button" type="button">RUN EVIDENCE-BACKED CALIBRATION</button>
-      </form>
-    </section>
+        <div class="hero-orbit" aria-hidden="true"><div class="orbit-core"><b>R</b><small>VERIFY</small></div><i></i><i></i><i></i></div>
+      </section>
 
-    <section id="mission" class="mission panel hidden">
-      <div class="panel-title"><span>02</span><div><b>LIVE MISSION</b><small id="mission-id">WAITING</small></div><strong id="mission-status">QUEUED</strong></div>
-      <div class="pipeline" id="pipeline">
-        <div class="stage"><i>01</i><b>READER</b><small>Paper → claims</small></div><div class="line"></div>
-        <div class="stage"><i>02</i><b>PLANNER</b><small>Claims → plan</small></div><div class="line"></div>
-        <div class="stage"><i>03</i><b>CODER</b><small>Plan → image</small></div><div class="line"></div>
-        <div class="stage"><i>04</i><b>EXECUTOR</b><small>Run → heal</small></div><div class="line"></div>
-        <div class="stage"><i>05</i><b>VERIFIER</b><small>Evidence → verdict</small></div><div class="line"></div>
-        <div class="stage"><i>06</i><b>REPORTER</b><small>Proof → report</small></div>
-      </div>
-      <div class="telemetry">
-        <article><header><b>AGENT DECISION STREAM</b><span>LIVE</span></header><div id="events" class="events"><p class="empty">Awaiting mission telemetry…</p></div></article>
-        <aside><b>RUN CONSTRAINTS</b><dl><dt>Spend</dt><dd id="spend">$0.00 / $1.00</dd><dt>Runtime</dt><dd id="runtime">00:00 / 20:00</dd><dt>Attempts</dt><dd id="attempt-count">0 / 3</dd><dt>Evidence policy</dt><dd>FAIL CLOSED</dd></dl><p>Local mode validates orchestration only. It will never invent an obtained value or reproduction verdict.</p></aside>
-      </div>
-    </section>
+      <section class="launch surface">
+        <div class="section-heading">
+          <div><span class="section-index">01</span><p>Start a replication</p><h2>Choose a paper and set the guardrails.</h2></div>
+          <span class="ready-badge"><i></i> Ready</span>
+        </div>
+        <form id="launch-form">
+          <label class="source-field"><span>ARXIV PAPER URL</span><div><input id="source" type="url" required value="https://arxiv.org/abs/1706.03762" aria-label="arXiv URL"><kbd>ARXIV</kbd></div><small>Paste an arxiv.org/abs link. Replicator handles the PDF and figures.</small></label>
+          <div class="guardrails">
+            <label><span><b>Repair attempts</b><output id="attempts-out">3</output></span><small>How many autonomous fixes are allowed</small><input id="attempts" type="range" min="1" max="8" value="3"></label>
+            <label><span><b>Runtime ceiling</b><output id="minutes-out">20 min</output></span><small>Maximum experiment-job time</small><input id="minutes" type="range" min="5" max="120" step="5" value="20"></label>
+            <label><span><b>Spend ceiling</b><output id="cost-out">$1.00</output></span><small>Maximum accounted mission cost</small><input id="cost" type="range" min="0.25" max="10" step="0.25" value="1"></label>
+          </div>
+          <button class="launch-button" type="submit"><span><b>Start autonomous replication</b><small>Usually 5–20 minutes depending on the paper</small></span><i>→</i></button>
+        </form>
+      </section>
 
-    <section id="evidence" class="evidence panel hidden">
-      <div class="panel-title"><span>03</span><div><b>EVIDENCE LEDGER</b><small>CLAIM → ARTIFACT → VERDICT</small></div><strong>FAIL CLOSED</strong></div>
-      <div class="evidence-head"><span>CLAIM</span><span>PAPER</span><span>OBTAINED</span><span>VERDICT</span></div>
-      <div id="claim-rows" class="claim-rows"><p>No verified claims yet.</p></div>
-      <a id="open-report" class="report-button" target="_blank">OPEN EVIDENCE REPORT ↗</a>
-    </section>
+      <section id="mission" class="mission surface hidden" aria-live="polite">
+        <div class="mission-header">
+          <div><span class="section-index">02</span><p>Live mission</p><h2 id="mission-paper">Preparing paper…</h2><small id="mission-id">WAITING</small></div>
+          <span id="mission-status" class="status-pill">QUEUED</span>
+        </div>
+
+        <div class="now-card">
+          <div id="state-icon" class="state-icon"><span></span></div>
+          <div class="now-copy"><p id="state-kicker">CURRENTLY</p><h3 id="state-title">Securing a worker</h3><p id="state-copy">Your mission has been accepted. Replicator is preparing the paper reader.</p></div>
+          <div class="now-time"><span id="progress-percent">2%</span><small id="elapsed">00:00 elapsed</small></div>
+          <div class="progress-track"><i id="progress-fill"></i></div>
+        </div>
+
+        <div class="pipeline" id="pipeline">
+          <article class="stage" data-stage="reading"><i>01</i><div><b>Read</b><small>Extract claims and figures</small></div><em>Waiting</em></article>
+          <article class="stage" data-stage="planning"><i>02</i><div><b>Plan</b><small>Design a bounded test</small></div><em>Waiting</em></article>
+          <article class="stage" data-stage="coding"><i>03</i><div><b>Build</b><small>Generate and validate code</small></div><em>Waiting</em></article>
+          <article class="stage" data-stage="running"><i>04</i><div><b>Run</b><small>Execute in cloud sandbox</small></div><em>Waiting</em></article>
+          <article class="stage" data-stage="verifying"><i>05</i><div><b>Verify</b><small>Compare claims to evidence</small></div><em>Waiting</em></article>
+          <article class="stage" data-stage="reported"><i>06</i><div><b>Report</b><small>Sign the evidence trail</small></div><em>Waiting</em></article>
+        </div>
+
+        <div class="mission-grid">
+          <article class="activity-card">
+            <header><div><p>Activity</p><h3>What Replicator has done</h3></div><span class="live-dot"><i></i> Live</span></header>
+            <div id="events" class="events"><p class="empty">Waiting for the first agent update…</p></div>
+          </article>
+          <aside class="facts-card">
+            <p>Mission guardrails</p>
+            <dl><div><dt>Accounted spend</dt><dd id="spend">$0.00 / $1.00</dd></div><div><dt>Job runtime</dt><dd id="runtime">0.0 / 20 min</dd></div><div><dt>Attempts used</dt><dd id="attempt-count">0 / 3</dd></div><div><dt>Evidence policy</dt><dd><span class="safe-dot"></span> Fail closed</dd></div></dl>
+            <div class="next-card"><span>WHAT HAPPENS NEXT</span><p id="next-action">The Reader will download the paper and identify measurable claims.</p></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="outcome" class="outcome surface hidden">
+        <div class="outcome-mark" id="outcome-mark">✓</div>
+        <div class="outcome-copy"><p id="outcome-kicker">MISSION COMPLETE</p><h2 id="outcome-title">The evidence report is ready.</h2><p id="outcome-summary">Replicator completed the workflow and preserved every artifact.</p></div>
+        <div class="outcome-stats"><div><b id="stat-reproduced">0</b><span>Reproduced</span></div><div><b id="stat-failed">0</b><span>Not reproduced</span></div><div><b id="stat-skipped">0</b><span>Not attempted</span></div></div>
+        <div class="outcome-actions"><a id="open-report" class="primary-action" target="_blank">Open evidence report ↗</a><button id="copy-link" type="button">Copy share link</button></div>
+      </section>
+
+      <section id="evidence" class="evidence surface hidden">
+        <div class="section-heading compact"><div><span class="section-index">03</span><p>Evidence ledger</p><h2>Every claim, measurement, and verdict.</h2></div><strong id="ledger-summary">Waiting for evidence</strong></div>
+        <div class="evidence-head"><span>Claim from paper</span><span>Reported</span><span>Measured</span><span>Verdict</span></div>
+        <div id="claim-rows" class="claim-rows"><p>No claims extracted yet.</p></div>
+      </section>
     </div>
-    <section id="archive-view" class="view panel catalog hidden">
-      <div class="panel-title"><span>AR</span><div><b>REPLICATION ARCHIVE</b><small>DURABLE MISSIONS / SHAREABLE EVIDENCE</small></div><strong id="archive-count">0 RUNS</strong></div>
-      <div id="archive-list" class="catalog-list"><p>Loading missions...</p></div>
+
+    <section id="archive-view" class="view surface catalog hidden">
+      <div class="section-heading"><div><span class="section-index">AR</span><p>Run archive</p><h2>Every mission, result, and receipt.</h2></div><strong id="archive-count">0 runs</strong></div>
+      <div id="archive-list" class="catalog-list"><p>Loading missions…</p></div>
     </section>
-    <section id="memory-view" class="view panel catalog hidden">
-      <div class="panel-title"><span>MX</span><div><b>REPAIR MEMORY</b><small>CROSS-PAPER LESSONS / VERIFIED FAILURES</small></div><strong id="memory-count">0 LESSONS</strong></div>
-      <div id="memory-list" class="catalog-list"><p>Loading lessons...</p></div>
+    <section id="memory-view" class="view surface catalog hidden">
+      <div class="section-heading"><div><span class="section-index">MX</span><p>Repair memory</p><h2>What the system learned from failure.</h2></div><strong id="memory-count">0 lessons</strong></div>
+      <div id="memory-list" class="catalog-list"><p>Loading lessons…</p></div>
     </section>
-    <footer><span>GEMINI 3.5 FLASH · GOOGLE ADK · CLOUD RUN</span><span>EVERY VERDICT HAS A RECEIPT.</span></footer>
   </main>
+
+  <footer><span>Gemini 3.5 Flash · Google ADK · Cloud Run</span><span>Evidence, not vibes.</span></footer>
   <script src="/app.js"></script>
 </body>
 </html>

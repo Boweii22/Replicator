@@ -1,137 +1,210 @@
 const $ = (id) => document.getElementById(id);
+
 let activeSource;
 let activePoll;
-const fields = [
+let activeRun;
+let activeEvidence = {claims: [], verdicts: []};
+const attemptIds = new Set();
+const seenEvents = new Set();
+
+const STAGES = ["reading", "planning", "coding", "running", "verifying", "reported"];
+const STATE = {
+  queued: {
+    label: "QUEUED", progress: 2, kicker: "MISSION ACCEPTED", title: "Securing a cloud worker",
+    copy: "Your guardrails are locked. Replicator is preparing the paper reader.",
+    next: "The Reader will download the paper and identify measurable claims."
+  },
+  reading: {
+    label: "READING PAPER", progress: 15, kicker: "STEP 1 OF 6", title: "Reading the paper",
+    copy: "The Reader is extracting figures, tables, and claims that can be measured.",
+    next: "The Planner will select feasible claims and design a bounded test."
+  },
+  planning: {
+    label: "PLANNING TEST", progress: 32, kicker: "STEP 2 OF 6", title: "Designing the experiment",
+    copy: "The Planner is choosing a defensible method that fits your time and cost ceilings.",
+    next: "If a claim is feasible within your guardrails, the Builder will create the experiment."
+  },
+  coding: {
+    label: "BUILDING", progress: 50, kicker: "STEP 3 OF 6", title: "Building the experiment",
+    copy: "The Builder is generating runnable code and validating its sources and dependencies.",
+    next: "Validated code will be packaged and dispatched to an isolated cloud sandbox."
+  },
+  running: {
+    label: "EXPERIMENT RUNNING", progress: 68, kicker: "STEP 4 OF 6", title: "Running the experiment",
+    copy: "The experiment is executing in an isolated Cloud Run job. Live usage is shown below.",
+    next: "The Verifier will compare the measured values with the paper's claims."
+  },
+  verifying: {
+    label: "VERIFYING", progress: 86, kicker: "STEP 5 OF 6", title: "Checking every result",
+    copy: "The Verifier is tracing measurements to artifacts and assigning evidence-backed verdicts.",
+    next: "The Reporter will sign the evidence trail and publish the final verdict."
+  },
+  reported: {
+    label: "ANALYSIS COMPLETE", progress: 100, kicker: "WORKFLOW FINISHED", title: "Analysis complete",
+    copy: "The final outcome and evidence ledger are ready below.",
+    next: "Review the outcome, inspect each claim, or open the signed evidence report."
+  },
+  failed_system: {
+    label: "SYSTEM STOPPED", progress: 100, kicker: "MISSION STOPPED", title: "The system could not finish",
+    copy: "Replicator stopped safely and preserved the available diagnostic evidence.",
+    next: "Open the evidence report for the failure reason before trying again."
+  }
+};
+
+[
   ["attempts", "attempts-out", (v) => v],
   ["minutes", "minutes-out", (v) => `${v} min`],
-  ["cost", "cost-out", (v) => `$${Number(v).toFixed(2)}`],
-];
-fields.forEach(([input, output, format]) => $(input).addEventListener("input", e => $(output).value = format(e.target.value)));
-setInterval(() => $("clock").textContent = new Date().toISOString().slice(11, 19) + "Z", 1000);
+  ["cost", "cost-out", (v) => `$${Number(v).toFixed(2)}`]
+].forEach(([input, output, format]) => $(input).addEventListener("input", (event) => {
+  $(output).value = format(event.target.value);
+}));
 
-const sharedRunId = new URLSearchParams(location.search).get("run");
-if (sharedRunId) {
-  fetch(`/replications/${sharedRunId}`).then(response => response.ok ? response.json() : Promise.reject(new Error("Run not found")))
-    .then(run => showExistingRun(run)).catch(error => console.error(error));
-}
+const updateClock = () => { $("clock").textContent = `${new Date().toISOString().slice(11, 19)}Z`; };
+updateClock();
+setInterval(updateClock, 1000);
 
-document.querySelectorAll("nav button[data-view]").forEach(button => button.addEventListener("click", async () => {
-  document.querySelectorAll("nav button").forEach(item => item.classList.remove("nav-active"));
+document.querySelectorAll("nav button[data-view]").forEach((button) => button.addEventListener("click", async () => {
+  document.querySelectorAll("nav button").forEach((item) => item.classList.remove("nav-active"));
   button.classList.add("nav-active");
-  document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
+  document.querySelectorAll(".view").forEach((view) => view.classList.add("hidden"));
   $(button.dataset.view).classList.remove("hidden");
   if (button.dataset.view === "archive-view") await loadArchive();
   if (button.dataset.view === "memory-view") await loadMemory();
 }));
 
 async function loadArchive() {
-  const response = await fetch("/replications");
+  const response = await fetch("/replications", {cache: "no-store"});
   if (!response.ok) return;
   const runs = await response.json();
   $("archive-count").textContent = `${runs.length} RUN${runs.length === 1 ? "" : "S"}`;
-  $("archive-list").innerHTML = runs.length ? "" : "<p>No missions yet.</p>";
-  runs.forEach(run => {
-    const row = document.createElement("a"); row.className = "catalog-row"; row.href = `/?run=${run.id}`;
-    const title = document.createElement("b"); title.textContent = run.title || run.source_url;
-    const status = document.createElement("em"); status.textContent = run.status.toUpperCase();
-    const spend = document.createElement("span"); spend.textContent = `$${run.spent.usd.toFixed(2)} / ${run.spent.job_minutes.toFixed(1)} MIN`;
-    row.append(title, status, spend); $("archive-list").appendChild(row);
+  $("archive-list").replaceChildren();
+  if (!runs.length) return $("archive-list").append(emptyMessage("No missions yet."));
+  runs.forEach((run) => {
+    const row = document.createElement("a");
+    row.className = "catalog-row";
+    row.href = `/?run=${run.id}`;
+    const title = document.createElement("b");
+    title.textContent = run.title || run.source_url;
+    const status = document.createElement("em");
+    status.textContent = (STATE[run.status]?.label || run.status).replace("ANALYSIS COMPLETE", "COMPLETE");
+    const spend = document.createElement("span");
+    spend.textContent = `$${run.spent.usd.toFixed(2)} · ${run.spent.job_minutes.toFixed(1)} job min`;
+    row.append(title, status, spend);
+    $("archive-list").appendChild(row);
   });
 }
 
 async function loadMemory() {
-  const response = await fetch("/memory");
+  const response = await fetch("/memory", {cache: "no-store"});
   if (!response.ok) return;
   const lessons = await response.json();
   $("memory-count").textContent = `${lessons.length} LESSON${lessons.length === 1 ? "" : "S"}`;
-  $("memory-list").innerHTML = lessons.length ? "" : "<p>No autonomous repairs learned yet.</p>";
-  lessons.forEach(lesson => {
-    const row = document.createElement("div"); row.className = "catalog-row memory";
+  $("memory-list").replaceChildren();
+  if (!lessons.length) return $("memory-list").append(emptyMessage("No autonomous repairs learned yet."));
+  lessons.forEach((lesson) => {
+    const row = document.createElement("div");
+    row.className = "catalog-row memory";
     const key = document.createElement("b"); key.textContent = lesson.key;
-    const text = document.createElement("span"); text.textContent = lesson.lesson;
-    const uses = document.createElement("em"); uses.textContent = `REUSED ${lesson.times_used}x`;
-    row.append(key, text, uses); $("memory-list").appendChild(row);
+    const copy = document.createElement("span"); copy.textContent = lesson.lesson;
+    const uses = document.createElement("em"); uses.textContent = `REUSED ${lesson.times_used}×`;
+    row.append(key, copy, uses);
+    $("memory-list").appendChild(row);
   });
 }
 
+function emptyMessage(text) {
+  const element = document.createElement("p");
+  element.textContent = text;
+  return element;
+}
+
 async function showExistingRun(run) {
+  activeRun = run;
+  attemptIds.clear();
+  seenEvents.clear();
   $("mission").classList.remove("hidden");
-  $("mission-id").textContent = `RUN / ${run.id.toUpperCase()}`;
+  $("events").replaceChildren(emptyMessage("Loading the mission timeline…"));
+  $("events").firstElementChild.className = "empty";
   $("open-report").href = `/replications/${run.id}/report`;
   renderRunState(run);
-  $("events").innerHTML = "";
-  connect(run.id);
   await refreshEvidence(run.id);
-  $("mission").scrollIntoView({behavior: "instant"});
+  connect(run.id);
+  $("mission").scrollIntoView({behavior: "smooth", block: "start"});
 }
 
 $("launch-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = event.submitter;
+  const label = button.querySelector("b");
   button.disabled = true;
-  button.querySelector("span").textContent = "INITIALIZING MISSION…";
-  const budget = {max_attempts: Number($("attempts").value), max_job_minutes: Number($("minutes").value), max_usd: Number($("cost").value)};
+  label.textContent = "Starting mission…";
+  const budget = {
+    max_attempts: Number($("attempts").value),
+    max_job_minutes: Number($("minutes").value),
+    max_usd: Number($("cost").value)
+  };
   try {
-    const response = await fetch("/replications", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({source_url: $("source").value, budget})});
-    if (!response.ok) throw new Error((await response.json()).detail || "Launch rejected");
+    const response = await fetch("/replications", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({source_url: $("source").value, budget})
+    });
+    if (!response.ok) throw new Error((await response.json()).detail || "The mission could not start");
     const run = await response.json();
-    $("mission").classList.remove("hidden");
-    $("mission-id").textContent = `RUN / ${run.id.toUpperCase()}`;
-    $("cost-out").value = `$${budget.max_usd.toFixed(2)}`;
-    $("spend").textContent = `$0.00 / $${budget.max_usd.toFixed(2)}`;
-    $("runtime").textContent = `00:00 / ${String(budget.max_job_minutes).padStart(2,"0")}:00`;
-    $("attempt-count").textContent = `0 / ${budget.max_attempts}`;
-    $("events").innerHTML = "";
-    $("open-report").href = `/replications/${run.id}/report`;
-    document.querySelector(".stage").classList.add("active");
-    document.querySelector(".mission").scrollIntoView({behavior:"smooth"});
-    connect(run.id);
-    refreshEvidence(run.id);
     history.replaceState(null, "", `?run=${run.id}`);
+    await showExistingRun(run);
   } catch (error) {
-    alert(error.message);
+    window.alert(error.message);
   } finally {
     button.disabled = false;
-    button.querySelector("span").textContent = "BEGIN AUTONOMOUS RUN";
+    label.textContent = "Start autonomous replication";
   }
 });
 
 function connect(id) {
-  if (activeSource) activeSource.close();
+  activeSource?.close();
   if (activePoll) clearInterval(activePoll);
   const source = new EventSource(`/replications/${id}/events`);
   activeSource = source;
   const handle = (event) => {
     const item = JSON.parse(event.data);
     if (item.kind === "heartbeat") return;
-    const row = document.createElement("div");
-    row.className = "event";
-    const stamp = new Date(item.created_at).toISOString().slice(11, 19);
-    row.innerHTML = `<time>${stamp}</time><b>${item.stage.toUpperCase()}</b><span></span>`;
-    row.querySelector("span").textContent = item.message;
-    $("events").prepend(row);
+    if (item.detail?.attempt_id) attemptIds.add(item.detail.attempt_id);
+    const key = event.lastEventId || `${item.created_at}-${item.stage}-${item.message}`;
+    if (!seenEvents.has(key)) {
+      seenEvents.add(key);
+      appendEvent(item);
+    }
     refreshRunState(id);
   };
-  source.addEventListener("status", handle);
-  source.addEventListener("agent.decision", handle);
-  source.addEventListener("artifact", handle);
+  ["status", "agent.decision", "artifact"].forEach((name) => source.addEventListener(name, handle));
   source.onerror = () => refreshRunState(id);
   refreshRunState(id);
   activePoll = setInterval(() => refreshRunState(id), 3000);
+}
+
+function appendEvent(item) {
+  if ($("events").querySelector(".empty")) $("events").replaceChildren();
+  const row = document.createElement("div"); row.className = "event";
+  const marker = document.createElement("i");
+  const copy = document.createElement("div");
+  const head = document.createElement("span");
+  const agent = document.createElement("b"); agent.textContent = humanStage(item.stage);
+  const time = document.createElement("time"); time.textContent = new Date(item.created_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"});
+  const message = document.createElement("p"); message.textContent = item.message;
+  head.append(agent, time); copy.append(head, message); row.append(marker, copy);
+  $("events").prepend(row);
 }
 
 async function refreshRunState(id) {
   try {
     const response = await fetch(`/replications/${id}`, {cache: "no-store"});
     if (!response.ok) return;
-    const run = await response.json();
-    renderRunState(run);
+    activeRun = await response.json();
     await refreshEvidence(id);
-    if (run.status === "reported" || run.status === "failed") {
-      clearInterval(activePoll);
-      activePoll = undefined;
-      activeSource?.close();
-      activeSource = undefined;
+    renderRunState(activeRun);
+    if (["reported", "failed_system"].includes(activeRun.status)) {
+      clearInterval(activePoll); activePoll = undefined;
+      activeSource?.close(); activeSource = undefined;
     }
   } catch (error) {
     console.error("Mission status refresh failed", error);
@@ -139,50 +212,142 @@ async function refreshRunState(id) {
 }
 
 function renderRunState(run) {
-  $("mission-status").textContent = run.status.toUpperCase();
+  const state = STATE[run.status] || STATE.queued;
+  const noAttempt = isNoAttempt(run, activeEvidence.verdicts);
+  $("mission-paper").textContent = run.title || "Preparing paper…";
+  $("mission-id").textContent = `RUN ${run.id.slice(0, 8).toUpperCase()} · ${new URL(run.source_url).hostname}`;
+  $("mission-status").textContent = state.label;
+  $("mission-status").className = `status-pill ${["reported", "failed_system"].includes(run.status) ? "terminal" : ""}`;
+  $("state-kicker").textContent = state.kicker;
+  $("state-title").textContent = noAttempt ? "Analysis complete — experiment skipped" : state.title;
+  $("state-copy").textContent = noAttempt
+    ? "Replicator extracted the claims, then stopped honestly because it could not dispatch a defensible experiment within the mission constraints."
+    : state.copy;
+  $("next-action").textContent = noAttempt
+    ? "Review the reason below. Increase the guardrails or choose a paper with a smaller reproducible experiment before retrying."
+    : state.next;
+  $("progress-percent").textContent = `${state.progress}%`;
+  $("progress-fill").style.width = `${state.progress}%`;
+  $("elapsed").textContent = `${formatElapsed(run)} elapsed`;
   $("spend").textContent = `$${run.spent.usd.toFixed(2)} / $${run.budget.max_usd.toFixed(2)}`;
-  $("runtime").textContent = `${run.spent.job_minutes.toFixed(1)} / ${run.budget.max_job_minutes.toFixed(0)} MIN`;
-  const activeStage = {queued: -1, reading: 0, planning: 1, coding: 2, running: 3, verifying: 4, reported: 5, failed: 5}[run.status] ?? -1;
+  $("runtime").textContent = `${run.spent.job_minutes.toFixed(1)} / ${run.budget.max_job_minutes.toFixed(0)} min`;
+  $("attempt-count").textContent = `${attemptIds.size} / ${run.budget.max_attempts}`;
+  $("state-icon").className = `state-icon ${run.status === "failed_system" || noAttempt ? "warning" : run.status === "reported" ? "complete" : ""}`;
+  renderStages(run.status, noAttempt);
+  if (["reported", "failed_system"].includes(run.status)) renderOutcome(run, activeEvidence.verdicts);
+}
+
+function renderStages(status, noAttempt) {
+  const current = STAGES.indexOf(status);
   document.querySelectorAll(".stage").forEach((stage, index) => {
-    stage.classList.toggle("active", index <= activeStage);
+    let mode = index < current ? "complete" : index === current ? "current" : "waiting";
+    if (status === "reported") mode = "complete";
+    if (noAttempt && [2, 3, 4].includes(index)) mode = "skipped";
+    stage.className = `stage ${mode}`;
+    stage.querySelector("em").textContent = ({complete: "Done", current: "In progress", waiting: "Waiting", skipped: "Skipped"})[mode];
   });
 }
 
-$("demo-button").addEventListener("click", async () => {
-  const button = $("demo-button");
-  button.disabled = true; button.textContent = "RUNNING REAL CALIBRATION…";
-  try {
-    const response = await fetch("/demo/calibration", {method: "POST"});
-    if (!response.ok) throw new Error("Calibration failed");
-    const run = await response.json();
-    $("mission").classList.remove("hidden");
-    $("mission-id").textContent = `CALIBRATION / ${run.id.toUpperCase()}`;
-    $("mission-status").textContent = run.status.toUpperCase();
-    $("open-report").href = `/replications/${run.id}/report`;
-    document.querySelectorAll(".stage").forEach(stage => stage.classList.add("active"));
-    $("events").innerHTML = "";
-    connect(run.id);
-    await refreshEvidence(run.id);
-    history.replaceState(null, "", `?run=${run.id}`);
-    $("mission").scrollIntoView({behavior: "smooth"});
-  } catch (error) { alert(error.message); }
-  finally { button.disabled = false; button.textContent = "RUN EVIDENCE-BACKED CALIBRATION"; }
-});
-
 async function refreshEvidence(id) {
-  const [claimsResponse, verdictsResponse] = await Promise.all([fetch(`/replications/${id}/claims`), fetch(`/replications/${id}/verdicts`)]);
+  const [claimsResponse, verdictsResponse] = await Promise.all([
+    fetch(`/replications/${id}/claims`, {cache: "no-store"}),
+    fetch(`/replications/${id}/verdicts`, {cache: "no-store"})
+  ]);
   if (!claimsResponse.ok || !verdictsResponse.ok) return;
   const claims = await claimsResponse.json();
   const verdicts = await verdictsResponse.json();
+  activeEvidence = {claims, verdicts};
+  verdicts.forEach((verdict) => { if (verdict.attempt_id) attemptIds.add(verdict.attempt_id); });
   if (!claims.length) return;
-  const byClaim = Object.fromEntries(verdicts.map(v => [v.claim_id, v]));
-  $("claim-rows").innerHTML = "";
-  claims.forEach(claim => {
+  const byClaim = Object.fromEntries(verdicts.map((verdict) => [verdict.claim_id, verdict]));
+  $("claim-rows").replaceChildren();
+  claims.forEach((claim) => {
     const verdict = byClaim[claim.id];
     const row = document.createElement("div"); row.className = "claim-row";
-    [claim.text, claim.reported_value ?? "—", verdict?.obtained_value ?? "—"].forEach(value => { const cell = document.createElement("span"); cell.textContent = value; row.appendChild(cell); });
-    const chip = document.createElement("strong"); chip.className = `verdict ${verdict?.status || ""}`; chip.textContent = verdict?.status || "PENDING"; row.appendChild(chip);
+    const claimCell = document.createElement("span"); claimCell.className = "claim-copy"; claimCell.textContent = claim.text;
+    const reported = document.createElement("span"); reported.textContent = formatValue(claim.reported_value, claim.unit);
+    const obtained = document.createElement("span"); obtained.textContent = formatValue(verdict?.obtained_value, claim.unit);
+    const chip = document.createElement("strong");
+    chip.className = `verdict ${verdict?.status || "PENDING"}`;
+    chip.textContent = humanVerdict(verdict?.status);
+    row.append(claimCell, reported, obtained, chip);
     $("claim-rows").appendChild(row);
   });
+  const attempted = verdicts.filter((verdict) => verdict.status !== "NOT_ATTEMPTED").length;
+  $("ledger-summary").textContent = attempted ? `${attempted} OF ${claims.length} CLAIMS TESTED` : `${claims.length} CLAIMS FOUND · NONE TESTED`;
   $("evidence").classList.remove("hidden");
+}
+
+function renderOutcome(run, verdicts) {
+  const reproduced = verdicts.filter((v) => v.status === "REPRODUCED").length;
+  const failed = verdicts.filter((v) => ["FAILED", "PARTIAL"].includes(v.status)).length;
+  const skipped = verdicts.filter((v) => v.status === "NOT_ATTEMPTED").length;
+  const noAttempt = isNoAttempt(run, verdicts);
+  $("stat-reproduced").textContent = reproduced;
+  $("stat-failed").textContent = failed;
+  $("stat-skipped").textContent = skipped;
+  $("outcome").classList.toggle("warning", noAttempt || run.status === "failed_system");
+  if (run.status === "failed_system") {
+    $("outcome-mark").textContent = "!";
+    $("outcome-kicker").textContent = "STOPPED SAFELY";
+    $("outcome-title").textContent = "The system could not finish this mission.";
+    $("outcome-summary").textContent = run.summary_verdict || "The available diagnostic evidence was preserved. No result has been invented.";
+  } else if (noAttempt) {
+    const reason = verdicts.find((v) => v.reasoning)?.reasoning;
+    $("outcome-mark").textContent = "↷";
+    $("outcome-kicker").textContent = "COMPLETED SAFELY";
+    $("outcome-title").textContent = "The experiment was not run.";
+    $("outcome-summary").textContent = `${reason || run.summary_verdict || "No defensible experiment could be dispatched within the mission constraints."} No reproduction verdict was claimed.`;
+  } else {
+    $("outcome-mark").textContent = reproduced ? "✓" : "≠";
+    $("outcome-kicker").textContent = "MISSION COMPLETE";
+    $("outcome-title").textContent = reproduced
+      ? `Evidence supports ${reproduced} of ${verdicts.length} tested claims.`
+      : "The tested claims did not reproduce.";
+    $("outcome-summary").textContent = run.summary_verdict || "Every verdict is linked to measured evidence in the ledger below.";
+  }
+  $("outcome").classList.remove("hidden");
+}
+
+function isNoAttempt(run, verdicts) {
+  return run.status === "reported" && verdicts.length > 0 && verdicts.every((verdict) => verdict.status === "NOT_ATTEMPTED") && attemptIds.size === 0;
+}
+
+function formatElapsed(run) {
+  const start = new Date(run.created_at).getTime();
+  const terminal = ["reported", "failed_system"].includes(run.status);
+  const end = terminal ? new Date(run.updated_at).getTime() : Date.now();
+  const seconds = Math.max(0, Math.floor((end - start) / 1000));
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function formatValue(value, unit) {
+  return value === null || value === undefined ? "—" : `${value}${unit ? ` ${unit}` : ""}`;
+}
+
+function humanStage(stage) {
+  return ({api: "System", reader: "Reader", planner: "Planner", coder: "Builder", executor: "Runner", verifier: "Verifier", reporter: "Reporter"})[stage] || stage;
+}
+
+function humanVerdict(status) {
+  return ({REPRODUCED: "Reproduced", PARTIAL: "Partial", FAILED: "Not reproduced", NOT_ATTEMPTED: "Not attempted"})[status] || "Pending";
+}
+
+$("copy-link").addEventListener("click", async () => {
+  const button = $("copy-link");
+  try {
+    await navigator.clipboard.writeText(location.href);
+    button.textContent = "Link copied";
+  } catch {
+    button.textContent = "Copy unavailable";
+  }
+  setTimeout(() => { button.textContent = "Copy share link"; }, 1800);
+});
+
+const sharedRunId = new URLSearchParams(location.search).get("run");
+if (sharedRunId) {
+  fetch(`/replications/${sharedRunId}`, {cache: "no-store"})
+    .then((response) => response.ok ? response.json() : Promise.reject(new Error("Run not found")))
+    .then(showExistingRun)
+    .catch((error) => console.error(error));
 }
