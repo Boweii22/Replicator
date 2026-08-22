@@ -1,17 +1,24 @@
+import re
+
 from packages.schemas.models import Attempt, Claim, Verdict, VerdictStatus, VisionAssessment
 from packages.science import numeric_verdict
+from services.verifier.metrics import Measurement
 
 
 BOUNDED_METRIC_WORDS = ("accuracy", "precision", "recall", "f1", "auc", "proportion")
 
 
-def evidence_contract_error(claims: list[Claim], metrics: dict[str, float]) -> str | None:
+def _measurement(item: Measurement | float) -> Measurement:
+    return item if isinstance(item, Measurement) else Measurement(value=float(item), legacy=True)
+
+
+def evidence_contract_error(claims: list[Claim], metrics: dict[str, Measurement | float]) -> str | None:
     """Reject the complete artifact when one value proves claim/metric misbinding."""
     for claim in claims:
         if claim.id not in metrics or claim.reported_value is None:
             continue
         label = f"{claim.metric_name or ''} {claim.text}".lower()
-        value = metrics[claim.id]
+        value = _measurement(metrics[claim.id]).value
         reported_on_unit_scale = 0 <= claim.reported_value <= 1 and claim.unit != "%"
         if reported_on_unit_scale and any(word in label for word in BOUNDED_METRIC_WORDS):
             if not 0 <= value <= 1:
@@ -22,7 +29,9 @@ def evidence_contract_error(claims: list[Claim], metrics: dict[str, float]) -> s
     return None
 
 
-def verify_numeric_claim(claim: Claim, attempt: Attempt, metrics: dict[str, float]) -> Verdict:
+def verify_numeric_claim(
+    claim: Claim, attempt: Attempt, metrics: dict[str, Measurement | float]
+) -> Verdict:
     if not attempt.metrics_gcs_uri:
         raise ValueError("Evidence policy violation: attempt has no metrics artifact URI")
     links = [attempt.metrics_gcs_uri] + ([attempt.stdout_gcs_uri] if attempt.stdout_gcs_uri else [])
@@ -45,7 +54,17 @@ def verify_numeric_claim(claim: Claim, attempt: Attempt, metrics: dict[str, floa
             ),
             evidence_links=links,
         )
-    obtained = metrics[claim.id]
+    measurement = _measurement(metrics[claim.id])
+    obtained = measurement.value
+    semantic_error = measurement_semantic_error(claim, measurement)
+    if semantic_error:
+        return Verdict(
+            claim_id=claim.id,
+            attempt_id=attempt.id,
+            status=VerdictStatus.NOT_ATTEMPTED,
+            reasoning=f"Measurement was not comparable to this claim: {semantic_error}",
+            evidence_links=links,
+        )
     status, delta = numeric_verdict(claim.reported_value, obtained, claim.tolerance_pct)
     return Verdict(
         claim_id=claim.id,
@@ -56,6 +75,35 @@ def verify_numeric_claim(claim: Claim, attempt: Attempt, metrics: dict[str, floa
         reasoning=f"Paper: {claim.reported_value:g}{claim.unit or ''}; artifact: {obtained:g}{claim.unit or ''}; delta {delta:.3f}% vs {claim.tolerance_pct:g}% tolerance.",
         evidence_links=links,
     )
+
+
+def _normal(value: str | None) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (value or "").lower())
+
+
+def measurement_semantic_error(claim: Claim, measurement: Measurement) -> str | None:
+    if measurement.legacy:
+        return None
+    if claim.metric_name and _normal(claim.metric_name) != _normal(measurement.metric_name):
+        return f"metric {measurement.metric_name!r} does not match {claim.metric_name!r}"
+    if _normal(claim.unit) != _normal(measurement.unit):
+        return f"unit {measurement.unit!r} does not match {claim.unit or ''!r}"
+    text = claim.text.lower()
+    count_match = re.search(r"(?:all(?:\s+of)?|over)\s+(\d+)\s+(?:ucr\s+)?datasets", text)
+    if count_match and measurement.dataset_count < int(count_match.group(1)):
+        return (
+            f"claim requires {count_match.group(1)} datasets; artifact declares "
+            f"{measurement.dataset_count}"
+        )
+    if "larger datasets" in text and _normal(measurement.data_source) in {"synthetic", "generated"}:
+        return "a synthetic smoke benchmark cannot establish a claim about larger real datasets"
+    dataset_match = re.search(r"\bon (?:the )?([a-z0-9-]+) dataset\b", text)
+    if dataset_match:
+        expected = _normal(dataset_match.group(1))
+        actual = {_normal(name) for name in measurement.dataset_names}
+        if expected not in actual:
+            return f"claim requires dataset {dataset_match.group(1)!r}; artifact declares {measurement.dataset_names!r}"
+    return None
 
 
 def verify_figure_claim(

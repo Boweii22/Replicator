@@ -7,8 +7,12 @@ from PIL import Image
 from packages.schemas.models import Attempt, Claim, Replication, Verdict, VerdictStatus
 from services.reporter.report import create_manifest, render_badge, render_report
 from services.verifier.figures import figure_similarity
-from services.verifier.metrics import EvidenceError, load_metrics_bytes
-from services.verifier.verifier import evidence_contract_error, verify_numeric_claim
+from services.verifier.metrics import EvidenceError, Measurement, load_metrics_bytes
+from services.verifier.verifier import (
+    evidence_contract_error,
+    measurement_semantic_error,
+    verify_numeric_claim,
+)
 
 
 def fixture():
@@ -81,6 +85,24 @@ def test_evidence_contract_accepts_valid_bounded_metric() -> None:
     claim.reported_value = 0.9
     claim.unit = None
     assert evidence_contract_error([claim], {claim.id: 0.92}) is None
+
+
+def test_smoke_benchmark_cannot_claim_109_dataset_result() -> None:
+    replication, claim, _ = fixture()
+    claim.text = "On average, MiniRocket is 30 times faster over 109 datasets."
+    claim.metric_name = "speedup"
+    claim.unit = "times"
+    measurement = Measurement(
+        value=10.5,
+        metric_name="speedup",
+        unit="times",
+        data_source="synthetic",
+        dataset_names=[],
+        dataset_count=0,
+        sample_count=80,
+        protocol="tiny generated arrays",
+    )
+    assert "requires 109 datasets" in measurement_semantic_error(claim, measurement)
 
 
 def test_badge_counts() -> None:

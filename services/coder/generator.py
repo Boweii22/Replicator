@@ -32,8 +32,11 @@ class VertexCodeGenerator:
 The container uses Python 3.11; all dependency pins must support Python 3.11 (Numba must be >=0.57).
 Return run.py and a fully pinned requirements.txt. run.py must accept --out as the exact OUTPUT FILE
 path, create its parent directory if needed, perform the actual calculation, and write a JSON object
-to that path keyed by exact claim IDs. Each value must be one finite numeric scalar, not a nested
-object. Treat every metric contract in the plan as a typed binding: keep the computed variable for
+to that path keyed by exact claim IDs. Every value MUST be an object with exactly these evidence
+fields: value (finite number), metric_name, unit (empty string when absent), data_source (a URL,
+official repository path, or "synthetic"), dataset_names (string list), dataset_count (integer),
+sample_count (integer), and protocol (specific non-empty description). Treat every metric contract
+in the plan as a typed binding: keep the computed variable for
 that claim's named metric, dataset/protocol, and unit attached to that exact claim ID. Before writing
 JSON, assert bounded metrics such as accuracy, precision, recall, F1, AUC, and proportions are in
 [0, 1] when the paper reports them on a 0-1 scale. Do not reuse one claim's computed variable for a
