@@ -3,7 +3,11 @@ from __future__ import annotations
 from packages.schemas.models import Event, Verdict, VerdictStatus, WorkMessage
 from services.verifier.figures import figure_similarity
 from services.verifier.metrics import load_metrics_bytes
-from services.verifier.verifier import verify_figure_claim, verify_numeric_claim
+from services.verifier.verifier import (
+    evidence_contract_error,
+    verify_figure_claim,
+    verify_numeric_claim,
+)
 from services.verifier.vision import GeminiVisionAssessor
 
 
@@ -23,6 +27,44 @@ class VerifierWorker:
             raise ValueError("Verifier requires an attempt with a metrics artifact")
         metrics = load_metrics_bytes(self.artifacts.get_bytes(attempt.metrics_gcs_uri))
         claims = await self.state.list_claims(message.replication_id)
+        contract_error = evidence_contract_error(claims, metrics)
+        if contract_error:
+            links = [uri for uri in (attempt.metrics_gcs_uri, attempt.stdout_gcs_uri) if uri]
+            verdicts = [
+                Verdict(
+                    claim_id=claim.id,
+                    attempt_id=attempt.id,
+                    status=VerdictStatus.NOT_ATTEMPTED,
+                    reasoning=(
+                        "Evidence contract failed; no scientific verdict was assigned. "
+                        + contract_error
+                    ),
+                    evidence_links=links,
+                )
+                for claim in claims
+            ]
+            for verdict in verdicts:
+                await self.state.put_verdict(verdict)
+            await self.state.append_event(
+                Event(
+                    replication_id=message.replication_id,
+                    kind="agent.decision",
+                    stage="verifier",
+                    message="Rejected a semantically inconsistent metrics artifact",
+                    detail={"attempt_id": attempt.id, "reason": contract_error},
+                )
+            )
+            await self.bus.publish(
+                "report.ready",
+                WorkMessage(
+                    event_type="report.ready",
+                    replication_id=message.replication_id,
+                    plan_id=message.plan_id,
+                    attempt_id=attempt.id,
+                    trace_id=message.trace_id,
+                ),
+            )
+            return
         verdicts = []
         for claim in claims:
             if not claim.feasible:

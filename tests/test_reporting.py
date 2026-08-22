@@ -8,7 +8,7 @@ from packages.schemas.models import Attempt, Claim, Replication, Verdict, Verdic
 from services.reporter.report import create_manifest, render_badge, render_report
 from services.verifier.figures import figure_similarity
 from services.verifier.metrics import EvidenceError, load_metrics_bytes
-from services.verifier.verifier import verify_numeric_claim
+from services.verifier.verifier import evidence_contract_error, verify_numeric_claim
 
 
 def fixture():
@@ -57,6 +57,23 @@ def test_verdict_refuses_missing_artifact() -> None:
 def test_metrics_reject_invalid_evidence(payload: bytes) -> None:
     with pytest.raises(EvidenceError):
         load_metrics_bytes(payload)
+
+
+def test_evidence_contract_rejects_impossible_bounded_metric() -> None:
+    _, claim, _ = fixture()
+    claim.metric_name = "classification_accuracy"
+    claim.reported_value = 0.9
+    claim.unit = None
+    error = evidence_contract_error([claim], {claim.id: 1.519})
+    assert error and "constrained to [0, 1]" in error
+
+
+def test_evidence_contract_accepts_valid_bounded_metric() -> None:
+    _, claim, _ = fixture()
+    claim.metric_name = "classification_accuracy"
+    claim.reported_value = 0.9
+    claim.unit = None
+    assert evidence_contract_error([claim], {claim.id: 0.92}) is None
 
 
 def test_badge_counts() -> None:

@@ -2,6 +2,26 @@ from packages.schemas.models import Attempt, Claim, Verdict, VerdictStatus, Visi
 from packages.science import numeric_verdict
 
 
+BOUNDED_METRIC_WORDS = ("accuracy", "precision", "recall", "f1", "auc", "proportion")
+
+
+def evidence_contract_error(claims: list[Claim], metrics: dict[str, float]) -> str | None:
+    """Reject the complete artifact when one value proves claim/metric misbinding."""
+    for claim in claims:
+        if claim.id not in metrics or claim.reported_value is None:
+            continue
+        label = f"{claim.metric_name or ''} {claim.text}".lower()
+        value = metrics[claim.id]
+        reported_on_unit_scale = 0 <= claim.reported_value <= 1 and claim.unit != "%"
+        if reported_on_unit_scale and any(word in label for word in BOUNDED_METRIC_WORDS):
+            if not 0 <= value <= 1:
+                return (
+                    f"Claim {claim.id} received {value:g} for a metric constrained to [0, 1]. "
+                    "This proves the artifact's claim-to-measurement mapping is unsafe."
+                )
+    return None
+
+
 def verify_numeric_claim(claim: Claim, attempt: Attempt, metrics: dict[str, float]) -> Verdict:
     if not attempt.metrics_gcs_uri:
         raise ValueError("Evidence policy violation: attempt has no metrics artifact URI")

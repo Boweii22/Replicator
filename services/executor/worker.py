@@ -102,7 +102,21 @@ class ExecutorWorker:
             return
         attempt = Attempt(plan_id=plan.id, n=len(previous) + 1, status="coding")
         await self.state.put_attempt(attempt)
-        generated = await self.generator.generate(plan)
+        # The model must see the semantic claim contract, not only opaque IDs.  Without
+        # this, a multi-metric experiment can compute real values but attach them to
+        # the wrong claims (for example, an elapsed time under an accuracy claim).
+        claims = await self.state.list_claims(replication.id)
+        generation_plan = plan.model_copy(deep=True)
+        generation_plan.steps.append(
+            "Metric contracts (each computed value must remain attached to its exact contract): "
+            + "; ".join(
+                f"id={claim.id!r}, metric={claim.metric_name!r}, unit={claim.unit!r}, "
+                f"paper_claim={claim.text!r}"
+                for claim in claims
+                if claim.id in plan.claim_ids
+            )
+        )
+        generated = await self.generator.generate(generation_plan)
         source, digest = build_source_bundle(package_generated_experiment(generated))
         source_key = f"{replication.id}/attempts/{attempt.id}/source-{digest}.tar.gz"
         source_uri = self.artifacts.put_bytes(source_key, source, "application/gzip")

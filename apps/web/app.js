@@ -4,6 +4,7 @@ let activeSource;
 let activePoll;
 let activeRun;
 let activeEvidence = {claims: [], verdicts: []};
+let evidenceContractError = "";
 const attemptIds = new Set();
 const seenEvents = new Set();
 
@@ -85,8 +86,8 @@ async function loadArchive() {
     if (!verdictResponse.ok) return {label: "REPORT READY", tone: "system"};
     const verdicts = await verdictResponse.json();
     if (verdicts.length && verdicts.every(isExecutionFailureVerdict)) return {label: "EXECUTION FAILED", tone: "failed"};
-    if (!verdicts.length || verdicts.every((verdict) => effectiveVerdictStatus(verdict) === "NOT_ATTEMPTED")) return {label: "NOT RUN", tone: "skipped"};
-    const reproduced = verdicts.filter((verdict) => effectiveVerdictStatus(verdict) === "REPRODUCED").length;
+    if (!verdicts.length || verdicts.every((verdict) => verdict.status === "NOT_ATTEMPTED")) return {label: "NOT RUN", tone: "skipped"};
+    const reproduced = verdicts.filter((verdict) => verdict.status === "REPRODUCED").length;
     return {label: `${reproduced} OF ${verdicts.length} REPRODUCED`, tone: reproduced ? "reproduced" : "failed"};
   }));
   runs.forEach((run, index) => {
@@ -235,20 +236,24 @@ async function refreshRunState(id) {
 
 function renderRunState(run) {
   const state = STATE[run.status] || STATE.queued;
-  const noAttempt = isNoAttempt(run, activeEvidence.verdicts);
+  const noAttempt = !evidenceContractError && isNoAttempt(run, activeEvidence.verdicts);
   const executionFailure = isExecutionFailure(activeEvidence.verdicts);
   $("mission-paper").textContent = run.title || "Preparing paper…";
   $("mission-id").textContent = `RUN ${run.id.slice(0, 8).toUpperCase()} · ${new URL(run.source_url).hostname}`;
   $("mission-status").textContent = state.label;
   $("mission-status").className = `status-pill ${["reported", "failed_system"].includes(run.status) ? "terminal" : ""}`;
   $("state-kicker").textContent = state.kicker;
-  $("state-title").textContent = executionFailure ? "Execution failed before measurement" : noAttempt ? "Analysis complete — experiment skipped" : state.title;
-  $("state-copy").textContent = executionFailure
+  $("state-title").textContent = evidenceContractError ? "Analysis complete — evidence rejected" : executionFailure ? "Execution failed before measurement" : noAttempt ? "Analysis complete — experiment skipped" : state.title;
+  $("state-copy").textContent = evidenceContractError
+    ? "The job ran, but its measurements violated their typed claim contract. Replicator invalidated the result instead of blaming the paper."
+    : executionFailure
     ? "Replicator built the experiment and exhausted every repair attempt, but no runnable job produced a measurement. No scientific verdict was assigned."
     : noAttempt
     ? "Replicator extracted the claims, then stopped honestly because it could not dispatch a defensible experiment within the mission constraints."
     : state.copy;
-  $("next-action").textContent = executionFailure
+  $("next-action").textContent = evidenceContractError
+    ? "Do not use these verdicts. Start a new run; new experiments now receive stricter claim-to-measurement bindings."
+    : executionFailure
     ? "Inspect the last error and evidence artifacts below. This is a system result—not evidence against the paper."
     : noAttempt
     ? "Review the reason below. Increase the guardrails or choose a paper with a smaller reproducible experiment before retrying."
@@ -256,9 +261,15 @@ function renderRunState(run) {
   $("progress-percent").textContent = `${state.progress}%`;
   $("progress-fill").style.width = `${state.progress}%`;
   $("elapsed").textContent = `${formatElapsed(run)} elapsed`;
-  $("spend").textContent = `$${run.spent.usd.toFixed(2)} / $${run.budget.max_usd.toFixed(2)}`;
-  $("runtime").textContent = `${run.spent.job_minutes.toFixed(1)} / ${run.budget.max_job_minutes.toFixed(0)} min`;
-  $("attempt-count").textContent = `${attemptIds.size} / ${run.budget.max_attempts}`;
+  $("spend").textContent = run.spent.usd > 0
+    ? `$${run.spent.usd.toFixed(2)} used · $${run.budget.max_usd.toFixed(2)} cap`
+    : `No spend yet · $${run.budget.max_usd.toFixed(2)} cap`;
+  $("runtime").textContent = run.spent.job_minutes > 0
+    ? `${run.spent.job_minutes.toFixed(1)} min used · ${run.budget.max_job_minutes.toFixed(0)} min cap`
+    : `Job not started · ${run.budget.max_job_minutes.toFixed(0)} min cap`;
+  $("attempt-count").textContent = attemptIds.size
+    ? `${attemptIds.size} used · ${run.budget.max_attempts} max`
+    : `No attempts yet · ${run.budget.max_attempts} max`;
   $("state-icon").className = `state-icon ${run.status === "failed_system" || noAttempt ? "warning" : run.status === "reported" ? "complete" : ""}`;
   renderStages(run.status, noAttempt, executionFailure);
   if (["reported", "failed_system"].includes(run.status)) renderOutcome(run, activeEvidence.verdicts);
@@ -286,6 +297,7 @@ async function refreshEvidence(id) {
   if (!claimsResponse.ok || !verdictsResponse.ok) return;
   const claims = await claimsResponse.json();
   const verdicts = await verdictsResponse.json();
+  evidenceContractError = findEvidenceContractError(claims, verdicts);
   activeEvidence = {claims, verdicts};
   verdicts.forEach((verdict) => { if (verdict.attempt_id) attemptIds.add(verdict.attempt_id); });
   if (!claims.length) return;
@@ -330,7 +342,12 @@ function renderOutcome(run, verdicts) {
   $("stat-failed").textContent = failed;
   $("stat-skipped").textContent = skipped;
   $("outcome").classList.toggle("warning", noAttempt || run.status === "failed_system");
-  if (run.status === "failed_system") {
+  if (evidenceContractError) {
+    $("outcome-mark").textContent = "!";
+    $("outcome-kicker").textContent = "EVIDENCE REJECTED";
+    $("outcome-title").textContent = "The measurements could not be trusted.";
+    $("outcome-summary").textContent = `${evidenceContractError} Replicator has invalidated the scientific verdicts; this is not evidence against the paper.`;
+  } else if (run.status === "failed_system") {
     $("outcome-mark").textContent = "!";
     $("outcome-kicker").textContent = "STOPPED SAFELY";
     $("outcome-title").textContent = "The system could not finish this mission.";
@@ -371,7 +388,21 @@ function isExecutionFailure(verdicts) {
 }
 
 function effectiveVerdictStatus(verdict) {
-  return isExecutionFailureVerdict(verdict) ? "NOT_ATTEMPTED" : verdict.status;
+  return evidenceContractError || isExecutionFailureVerdict(verdict) ? "NOT_ATTEMPTED" : verdict.status;
+}
+
+function findEvidenceContractError(claims, verdicts) {
+  const byClaim = Object.fromEntries(claims.map((claim) => [claim.id, claim]));
+  for (const verdict of verdicts) {
+    const claim = byClaim[verdict.claim_id];
+    if (!claim || verdict.obtained_value === null || verdict.obtained_value === undefined) continue;
+    const label = `${claim.metric_name || ""} ${claim.text}`.toLowerCase();
+    const bounded = ["accuracy", "precision", "recall", "f1", "auc", "proportion"].some((word) => label.includes(word));
+    if (bounded && claim.unit !== "%" && claim.reported_value >= 0 && claim.reported_value <= 1 && (verdict.obtained_value < 0 || verdict.obtained_value > 1)) {
+      return `A bounded metric received ${verdict.obtained_value}, outside its valid 0–1 range. This indicates values were attached to the wrong claims.`;
+    }
+  }
+  return "";
 }
 
 function formatElapsed(run) {
