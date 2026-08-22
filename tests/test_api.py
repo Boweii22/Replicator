@@ -18,6 +18,13 @@ def test_mission_control_distinguishes_completed_noncomparable_run() -> None:
     assert "isNoComparableEvidence" in script
 
 
+def test_evidence_policy_is_explained_without_failure_jargon() -> None:
+    page = (Path(__file__).parents[1] / "apps" / "web" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    assert "Strict evidence · no guessing" in page
+
+
 def test_create_get_and_budget_contract() -> None:
     with TestClient(app) as client:
         response = client.post(

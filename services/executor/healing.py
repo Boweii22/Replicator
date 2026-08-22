@@ -15,7 +15,7 @@ def extract_error_signature(stderr: str) -> str:
         "invalid dataset name" in lowered
         or "all download strategies failed" in lowered
         or "file is not a zip file" in lowered
-        or ("httperror" in lowered and "404" in lowered)
+        or (("httperror" in lowered or "http error" in lowered) and "404" in lowered)
     ):
         return "dataset-source-unavailable"
     if "cannot import name 'minirocketclassifier'" in lowered:

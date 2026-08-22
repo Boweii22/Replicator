@@ -67,6 +67,7 @@ def test_error_signature_and_memory_key_are_stable() -> None:
         "ValueError: Invalid dataset name =Fruit is not available",
         "BadZipFile: File is not a zip file",
         "RuntimeError: All download strategies failed after 1 retries each",
+        "Could not download COIL-20 dataset\nHTTP Error 404: Not Found",
     ],
 )
 def test_dataset_failures_share_one_actionable_signature(stderr: str) -> None:

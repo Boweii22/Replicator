@@ -231,7 +231,14 @@ class ExecutorWorker:
             )
         except Exception:
             stderr = str(error)
-        signature = extract_error_signature(stderr)
+        try:
+            stdout = self.artifacts.get_bytes(attempt.stdout_gcs_uri).decode(
+                "utf-8", errors="replace"
+            ) if attempt.stdout_gcs_uri else ""
+        except Exception:
+            stdout = ""
+        diagnostic_log = "\n".join(part for part in (stderr, stdout) if part)
+        signature = extract_error_signature(diagnostic_log)
         if attempt.started_at is not None:
             elapsed_minutes = max(0.0, (utcnow() - attempt.started_at).total_seconds() / 60)
             await self.state.add_spend(
@@ -268,6 +275,12 @@ class ExecutorWorker:
                 "pinned/package-bundled source, omit dataset-dependent claim IDs, and preserve any "
                 "independently testable parameter claims."
             )
+            if "coil-20" in diagnostic_log.lower() or "coil20" in diagnostic_log.lower():
+                plan.risks.append(
+                    "COIL-20 SOURCE REPAIR: the legacy ZIP URLs are dead. Use "
+                    "sklearn.datasets.fetch_openml(data_id=40996, parser='auto') and record "
+                    "OpenML provenance, or omit COIL-20 claims if unavailable."
+                )
         await self.state.put_plan(plan)
         await self.state.append_event(
             Event(
