@@ -43,6 +43,14 @@ The system also handles the two scientifically important non-success cases hones
 One captured end-to-end cloud execution is documented in [the Devpost evidence draft](docs/DEVPOST.md),
 including its run ID, trace ID, immutable image digest, runtime, and accounted cost.
 
+## Architecture at a glance
+
+![Replicator production architecture on Google Cloud](docs/architecture.png)
+
+The API, asynchronous worker fleet, durable state, isolated experiment runtime, immutable artifacts,
+and signed reporting path are shown above. A simplified judge-friendly flow appears in the
+[Architecture](#architecture) section below.
+
 ## Why it matters
 
 Reproducing a result can take a researcher days or weeks: read the paper, isolate the precise claim,
@@ -79,8 +87,6 @@ This makes negative and incomplete outcomes useful: they reveal exactly what was
 and what remains unknown without manufacturing certainty.
 
 ## Architecture
-
-![Replicator Google Cloud architecture](docs/architecture.png)
 
 ```mermaid
 flowchart LR
