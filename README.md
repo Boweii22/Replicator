@@ -11,6 +11,10 @@ job, repairs failures within budget, and returns an evidence-backed verdict.
 
 **Live application:** https://replicator-api-821279770160.europe-west1.run.app/
 
+**Demo video:** [Watch Replicator turn research claims into runnable evidence](https://youtu.be/mwZFU4pYQ1I)
+
+[![Watch the Replicator demo video](demo/replicator-youtube-thumbnail.png)](https://youtu.be/mwZFU4pYQ1I)
+
 ![Replicator Mission Control](docs/ui-release.png)
 
 ## Current status
@@ -195,8 +199,7 @@ to prove that budget enforcement and honest refusal are part of the product—no
 - [Build article draft](docs/BLOG_DRAFT.md)
 - [Social post draft](docs/SOCIAL_DRAFT.md)
 - [Demo paper portfolio](docs/DEMO_PAPERS.md)
-
-The final demo video URL will be added after upload.
+- [Demo video](https://youtu.be/mwZFU4pYQ1I)
 
 ## Safety invariants
 
