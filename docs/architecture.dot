@@ -1,29 +1,60 @@
 digraph Replicator {
-  graph [bgcolor="#07100d", pad="0.4", nodesep="0.5", ranksep="0.7", fontname="Arial", label="REPLICATOR · EVIDENCE-FIRST AUTONOMOUS SCIENCE", labelloc="t", fontsize="20", fontcolor="#e8f1eb"];
-  node [shape=box, style="rounded,filled", fillcolor="#10251e", color="#315043", fontcolor="#e8f1eb", fontname="Arial", margin="0.18"];
-  edge [color="#54e6c1", fontcolor="#9cb0a6", fontname="Arial", fontsize="9"];
-  UI [label="Mission Control\nLive SSE + evidence ledger", color="#baff35"];
-  API [label="Cloud Run · API\nBudgets + IDs-only events"];
-  PS [label="Pub/Sub\nOIDC push · DLQ", shape=cylinder];
-  R [label="Reader · ADK\nPDF + figures → claims"];
-  P [label="Planner · ADK\nClaims → bounded plan"];
-  C [label="Coder · Gemini\nPlan → immutable source"];
-  E [label="Executor\nBuild · run · heal"];
-  J [label="Cloud Run Jobs\nRestricted experiment", color="#ff9e57"];
-  V [label="Verifier · Gemini Vision\nArtifacts → verdicts"];
-  O [label="Reporter\nIAM-signed evidence report", color="#baff35"];
-  F [label="Firestore\nState + repair memory", shape=cylinder];
-  G [label="Cloud Storage\nPDF · code · logs · metrics · figures", shape=cylinder];
-  T [label="Cloud Trace + Logging\nCorrelated audit trail", shape=cylinder];
-  SM [label="Secret Manager\nExternal tokens", shape=cylinder];
-  JAN [label="Scheduled Janitor\nStalled-run recovery"];
+  graph [
+    rankdir="LR",
+    bgcolor="#f4f1e8",
+    pad="0.55",
+    nodesep="0.38",
+    ranksep="0.7",
+    fontname="Arial Bold",
+    label="REPLICATOR  /  PRODUCTION ARCHITECTURE",
+    labelloc="t",
+    labeljust="l",
+    fontsize="26",
+    fontcolor="#0b0b0b",
+    splines="spline"
+  ];
+
+  node [
+    shape=box,
+    style="filled",
+    fillcolor="#fffdf7",
+    color="#0b0b0b",
+    penwidth="2.2",
+    fontcolor="#0b0b0b",
+    fontname="Arial Bold",
+    fontsize="12",
+    margin="0.2,0.15"
+  ];
+
+  edge [
+    color="#5943ff",
+    penwidth="2.8",
+    arrowsize="0.8",
+    fontcolor="#5943ff",
+    fontname="Arial Bold",
+    fontsize="9"
+  ];
+
+  UI [label="01  RESEARCHER\nPaper URL + guardrails", fillcolor="#baff32"];
+  API [label="02  CLOUD RUN API\nMission control + SSE", fillcolor="#5943ff", fontcolor="#ffffff"];
+  FS [label="FIRESTORE\nDurable state + repair memory", shape=cylinder];
+  PS [label="03  PUB/SUB\nAuthenticated async dispatch", shape=cylinder];
+  A [label="04  SIX ADK AGENTS\nRead · plan · build · run · verify · report", fillcolor="#0b0b0b", fontcolor="#ffffff"];
+  M [label="GEMINI 3.5 FLASH\nStructured scientific reasoning", fillcolor="#5943ff", fontcolor="#ffffff"];
+  J [label="05  CLOUD RUN JOBS\nIsolated budget-capped experiments", fillcolor="#0b0b0b", fontcolor="#ffffff"];
+  G [label="06  CLOUD STORAGE\nImmutable code + logs + metrics", shape=cylinder];
+  V [label="07  VERIFIER\nClaim ↔ observed measurement"];
+  O [label="08  SIGNED REPORT\nAuditable evidence verdict", fillcolor="#baff32"];
+
   UI -> API;
-  API -> PS [label="replication.requested"];
-  PS -> R -> P -> C -> E -> J -> V -> O;
-  O -> UI [label="report.ready"];
-  {R P C E V O JAN} -> F [color="#527466"];
-  {R J O} -> G [color="#527466"];
-  {R P C E V O} -> T [color="#527466"];
-  SM -> C [style=dashed];
-  JAN -> PS [label="dead-letter", style=dashed];
+  API -> PS;
+  PS -> A;
+  A -> J [color="#baff32", fontcolor="#507a00"];
+  J -> G [color="#baff32", fontcolor="#507a00"];
+  G -> V [color="#baff32", fontcolor="#507a00"];
+  V -> O [color="#baff32", fontcolor="#507a00"];
+
+  API -> FS [style=dashed, constraint=false];
+  FS -> A [style=dashed, constraint=false];
+  A -> M [dir=both, style=dashed, constraint=false];
 }
